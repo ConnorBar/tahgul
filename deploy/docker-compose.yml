@@ -1,0 +1,63 @@
+# Tahgul stack.
+#
+#   cp deploy/.env.example deploy/.env    # then edit it
+#   docker compose -f deploy/docker-compose.yml up --build
+#
+# Development: the API is published on 127.0.0.1:8000 only (never the LAN).
+# Homelab: also start the Tailscale sidecar with `--profile tailscale`; it serves
+# https://tahgul.<tailnet>.ts.net and is the only way in from other devices.
+
+name: tahgul
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: tahgul
+      POSTGRES_USER: tahgul
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tahgul -d tahgul"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TAHGUL_DATABASE_URL: postgresql+psycopg://tahgul:${POSTGRES_PASSWORD}@db:5432/tahgul
+      # Plain HTTP on localhost during development; true behind Tailscale HTTPS.
+      TAHGUL_COOKIE_SECURE: ${TAHGUL_COOKIE_SECURE:-true}
+      TAHGUL_OWNER_EMAIL: ${TAHGUL_OWNER_EMAIL:-}
+      TAHGUL_OWNER_PASSWORD: ${TAHGUL_OWNER_PASSWORD:-}
+    ports:
+      - "127.0.0.1:${TAHGUL_PORT:-8000}:8000"
+
+  tailscale:
+    profiles: ["tailscale"]
+    image: tailscale/tailscale:stable
+    hostname: tahgul
+    restart: unless-stopped
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_USERSPACE: "true"
+    volumes:
+      - ts-state:/var/lib/tailscale
+      - ./tailscale/serve.json:/config/serve.json:ro
+    depends_on:
+      - api
+
+volumes:
+  db-data:
+  ts-state:

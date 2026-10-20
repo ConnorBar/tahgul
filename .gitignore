@@ -12,9 +12,10 @@ node_modules/
 web/dist/
 
 # Built web app copied into the API
-api/ledger/static/
+api/tahgul/static/
 
 # Local config and data
 .env
 *.db
 data/
+*.tsbuildinfo
