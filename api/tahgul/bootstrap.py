@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from tahgul import audit
-from tahgul.models import User
+from tahgul.models import User, Workspace
 from tahgul.security import MIN_PASSWORD_LENGTH, hash_password
 
 log = logging.getLogger("tahgul")
@@ -24,6 +24,12 @@ def create_owner(db: Session, email: str, password: str) -> User:
     db.add(user)
     db.flush()
     audit.record(db, None, "create", "user", user.id, {"email": user.email})
+    # Start with one workspace so clients and projects have somewhere to live.
+    if not db.scalar(select(func.count()).select_from(Workspace)):
+        ws = Workspace(name="Consulting")
+        db.add(ws)
+        db.flush()
+        audit.record(db, None, "create", "workspace", ws.id, {"name": ws.name})
     db.commit()
     return user
 

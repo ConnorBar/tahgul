@@ -67,7 +67,7 @@ def test_token_with_right_prefix_but_wrong_secret(logged_in, client):
 
 
 def test_scope_validation(logged_in):
-    r = logged_in.post("/api/v1/tokens", json={"name": "x", "scopes": ["admin"]})
+    r = logged_in.post("/api/v1/tokens", json={"name": "x", "scopes": ["superuser"]})
     assert r.status_code == 422
     r = logged_in.post("/api/v1/tokens", json={"name": "  ", "scopes": ["read"]})
     assert r.status_code == 422
