@@ -3,8 +3,8 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import create_engine, pool
 
-from ledger.config import get_settings
-from ledger.models import Base
+from tahgul.config import get_settings
+from tahgul.models import Base
 
 config = context.config
 if config.config_file_name is not None:

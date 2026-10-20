@@ -2,8 +2,8 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from ledger.models import AuditLog
-from ledger.principal import Principal
+from tahgul.models import AuditLog
+from tahgul.principal import Principal
 
 
 def record(

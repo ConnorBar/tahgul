@@ -8,13 +8,13 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ledger import audit
-from ledger.db import get_db
-from ledger.deps import require_owner
-from ledger.models import ApiToken
-from ledger.principal import TOKEN_SCOPES, Principal
-from ledger.security import new_api_token, sha256
-from ledger.timeutil import utcnow
+from tahgul import audit
+from tahgul.db import get_db
+from tahgul.deps import require_owner
+from tahgul.models import ApiToken
+from tahgul.principal import TOKEN_SCOPES, Principal
+from tahgul.security import new_api_token, sha256
+from tahgul.timeutil import utcnow
 
 router = APIRouter(prefix="/api/v1/tokens", tags=["tokens"])
 

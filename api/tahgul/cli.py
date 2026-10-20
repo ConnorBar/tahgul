@@ -1,4 +1,4 @@
-"""Admin commands: `ledger create-owner`, `ledger reset-totp`."""
+"""Admin commands: `tahgul create-owner`, `tahgul reset-totp`."""
 
 import argparse
 import getpass
@@ -6,9 +6,9 @@ import sys
 
 from sqlalchemy import func, select
 
-from ledger.bootstrap import OwnerExists, create_owner
-from ledger.db import get_sessionmaker
-from ledger.models import User
+from tahgul.bootstrap import OwnerExists, create_owner
+from tahgul.db import get_sessionmaker
+from tahgul.models import User
 
 
 def _create_owner(args: argparse.Namespace) -> int:
@@ -42,7 +42,7 @@ def _reset_totp(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="ledger")
+    parser = argparse.ArgumentParser(prog="tahgul")
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("create-owner", help="create the single owner account")

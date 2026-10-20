@@ -1,6 +1,6 @@
 """Shared fixtures.
 
-Tests run against LEDGER_TEST_DATABASE_URL when set (CI uses Postgres), otherwise a
+Tests run against TAHGUL_TEST_DATABASE_URL when set (CI uses Postgres), otherwise a
 throwaway SQLite file, so `pytest` works on a laptop with no database running.
 """
 
@@ -8,26 +8,26 @@ import os
 import tempfile
 from pathlib import Path
 
-_tmp = Path(tempfile.mkdtemp(prefix="ledger-test-"))
-os.environ["LEDGER_DATABASE_URL"] = os.environ.get(
-    "LEDGER_TEST_DATABASE_URL", f"sqlite:///{_tmp / 'test.db'}"
+_tmp = Path(tempfile.mkdtemp(prefix="tahgul-test-"))
+os.environ["TAHGUL_DATABASE_URL"] = os.environ.get(
+    "TAHGUL_TEST_DATABASE_URL", f"sqlite:///{_tmp / 'test.db'}"
 )
-os.environ["LEDGER_COOKIE_SECURE"] = "false"  # TestClient talks plain HTTP
-os.environ["LEDGER_STATIC_DIR"] = str(_tmp / "no-web-build")
-os.environ.pop("LEDGER_OWNER_EMAIL", None)
-os.environ.pop("LEDGER_OWNER_PASSWORD", None)
+os.environ["TAHGUL_COOKIE_SECURE"] = "false"  # TestClient talks plain HTTP
+os.environ["TAHGUL_STATIC_DIR"] = str(_tmp / "no-web-build")
+os.environ.pop("TAHGUL_OWNER_EMAIL", None)
+os.environ.pop("TAHGUL_OWNER_PASSWORD", None)
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-from ledger.bootstrap import create_owner  # noqa: E402
-from ledger.db import get_engine, get_sessionmaker  # noqa: E402
-from ledger.main import create_app  # noqa: E402
-from ledger.models import Base  # noqa: E402
+from tahgul.bootstrap import create_owner  # noqa: E402
+from tahgul.db import get_engine, get_sessionmaker  # noqa: E402
+from tahgul.main import create_app  # noqa: E402
+from tahgul.models import Base  # noqa: E402
 
 OWNER_EMAIL = "connor@example.com"
 OWNER_PASSWORD = "correct horse battery"
-CSRF = {"X-Requested-With": "ledger"}
+CSRF = {"X-Requested-With": "tahgul"}
 
 
 @pytest.fixture(autouse=True)

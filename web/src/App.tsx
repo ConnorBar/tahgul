@@ -14,7 +14,7 @@ export default function App() {
   if (me.isError)
     return (
       <div className="splash">
-        <p>Can't reach Ledger. Is Tailscale connected?</p>
+        <p>Can't reach Tahgul. Is Tailscale connected?</p>
         <button onClick={() => me.refetch()}>Try again</button>
       </div>
     );
@@ -32,7 +32,7 @@ function Shell({ me }: { me: Me }) {
   return (
     <div className="shell">
       <header className="topbar">
-        <span className="brand">Ledger</span>
+        <span className="brand">Tahgul</span>
         {/* The running-timer bar lands here in milestone 3. */}
         <div className="timer-slot" aria-hidden="true" />
         <nav>

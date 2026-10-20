@@ -12,16 +12,16 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: ledger
-          POSTGRES_PASSWORD: ledger
-          POSTGRES_DB: ledger_test
+          POSTGRES_USER: tahgul
+          POSTGRES_PASSWORD: tahgul
+          POSTGRES_DB: tahgul_test
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U ledger" --health-interval 5s --health-timeout 3s
+          --health-cmd "pg_isready -U tahgul" --health-interval 5s --health-timeout 3s
           --health-retries 20
     env:
-      LEDGER_TEST_DATABASE_URL: postgresql+psycopg://ledger:ledger@localhost:5432/ledger_test
-      LEDGER_DATABASE_URL: postgresql+psycopg://ledger:ledger@localhost:5432/ledger_test
+      TAHGUL_TEST_DATABASE_URL: postgresql+psycopg://tahgul:tahgul@localhost:5432/tahgul_test
+      TAHGUL_DATABASE_URL: postgresql+psycopg://tahgul:tahgul@localhost:5432/tahgul_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -66,9 +66,9 @@ jobs:
       - name: Build image and smoke-test the stack
         env:
           POSTGRES_PASSWORD: ci-password
-          LEDGER_COOKIE_SECURE: "false"
-          LEDGER_OWNER_EMAIL: ci@example.com
-          LEDGER_OWNER_PASSWORD: ci-password-long
+          TAHGUL_COOKIE_SECURE: "false"
+          TAHGUL_OWNER_EMAIL: ci@example.com
+          TAHGUL_OWNER_PASSWORD: ci-password-long
         run: |
           docker compose -f deploy/docker-compose.yml up -d --build --wait
           curl -fsS http://127.0.0.1:8000/api/v1/health

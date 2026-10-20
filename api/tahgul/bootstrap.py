@@ -3,11 +3,11 @@ import logging
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ledger import audit
-from ledger.models import User
-from ledger.security import MIN_PASSWORD_LENGTH, hash_password
+from tahgul import audit
+from tahgul.models import User
+from tahgul.security import MIN_PASSWORD_LENGTH, hash_password
 
-log = logging.getLogger("ledger")
+log = logging.getLogger("tahgul")
 
 
 class OwnerExists(Exception):

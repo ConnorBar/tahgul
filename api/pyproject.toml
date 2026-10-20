@@ -1,5 +1,5 @@
 [project]
-name = "ledger"
+name = "tahgul"
 version = "0.1.0"
 description = "Self-hosted ops app for a solo consultancy"
 requires-python = ">=3.12"
@@ -23,14 +23,14 @@ dev = [
 ]
 
 [project.scripts]
-ledger = "ledger.cli:main"
+tahgul = "tahgul.cli:main"
 
 [build-system]
 requires = ["setuptools>=69"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["ledger*"]
+include = ["tahgul*"]
 
 [tool.setuptools.package-data]
-ledger = ["static/**/*"]
+tahgul = ["static/**/*"]

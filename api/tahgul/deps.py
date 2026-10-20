@@ -7,12 +7,12 @@ from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from ledger.config import get_settings
-from ledger.db import get_db
-from ledger.models import ApiToken, UserSession
-from ledger.principal import Principal
-from ledger.security import parse_api_token, sha256
-from ledger.timeutil import as_utc, utcnow
+from tahgul.config import get_settings
+from tahgul.db import get_db
+from tahgul.models import ApiToken, UserSession
+from tahgul.principal import Principal
+from tahgul.security import parse_api_token, sha256
+from tahgul.timeutil import as_utc, utcnow
 
 SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 CSRF_HEADER = "x-requested-with"
@@ -54,8 +54,8 @@ def _from_session(db: Session, request: Request, raw: str) -> Principal:
     if sess is None or sess.deleted_at is not None or as_utc(sess.expires_at) <= now:
         raise _unauthorized()
     # Cookie-authenticated writes must carry a custom header. Browsers can't add one
-    # cross-site without a CORS preflight, which Ledger never allows (CSRF guard).
-    if request.method not in SAFE_METHODS and request.headers.get(CSRF_HEADER) != "ledger":
+    # cross-site without a CORS preflight, which Tahgul never allows (CSRF guard).
+    if request.method not in SAFE_METHODS and request.headers.get(CSRF_HEADER) != "tahgul":
         raise HTTPException(status.HTTP_403_FORBIDDEN, detail="csrf_header_missing")
     if sess.last_seen_at is None or now - as_utc(sess.last_seen_at) > TOUCH_INTERVAL:
         sess.last_seen_at = now

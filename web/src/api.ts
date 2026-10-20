@@ -12,7 +12,7 @@ export class ApiError extends Error {
 
 export async function api<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
-  headers.set("X-Requested-With", "ledger");
+  headers.set("X-Requested-With", "tahgul");
   if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
 
   const res = await fetch(`/api/v1${path}`, { ...options, headers, credentials: "same-origin" });

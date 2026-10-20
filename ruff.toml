@@ -11,4 +11,4 @@ ignore = ["B008"]
 "tests/conftest.py" = ["E402"]
 
 [lint.isort]
-known-first-party = ["ledger", "conftest"]
+known-first-party = ["tahgul", "conftest"]

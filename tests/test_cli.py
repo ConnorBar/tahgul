@@ -1,4 +1,4 @@
-from ledger.cli import main
+from tahgul.cli import main
 
 
 def test_create_owner_once(capsys):

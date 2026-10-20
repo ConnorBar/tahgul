@@ -54,7 +54,7 @@ def test_wrong_password_and_unknown_user(client, owner):
 
 
 def test_login_is_throttled(client, owner, monkeypatch):
-    from ledger.config import get_settings
+    from tahgul.config import get_settings
 
     monkeypatch.setattr(get_settings(), "login_max_failures", 3)
     for _ in range(3):
@@ -114,8 +114,8 @@ def test_password_change_signs_out_other_sessions(client, owner):
 def test_spa_fallback_serves_index(tmp_path, monkeypatch):
     from fastapi.testclient import TestClient
 
-    from ledger.config import get_settings
-    from ledger.main import create_app
+    from tahgul.config import get_settings
+    from tahgul.main import create_app
 
     (tmp_path / "assets").mkdir()
     (tmp_path / "index.html").write_text("<div id=root></div>")

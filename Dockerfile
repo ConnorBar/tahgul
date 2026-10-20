@@ -15,11 +15,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN useradd --system --uid 10001 --home /app ledger
+RUN useradd --system --uid 10001 --home /app tahgul
 WORKDIR /app
 
 COPY api/pyproject.toml ./
-COPY api/ledger ./ledger
+COPY api/tahgul ./tahgul
 RUN pip install .
 
 COPY api/alembic.ini ./
@@ -27,10 +27,10 @@ COPY api/migrations ./migrations
 COPY deploy/entrypoint.sh /entrypoint.sh
 COPY --from=web /web/dist ./static
 
-ENV LEDGER_STATIC_DIR=/app/static
-USER ledger
+ENV TAHGUL_STATIC_DIR=/app/static
+USER tahgul
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
   CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health').status==200 else 1)"
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["uvicorn", "ledger.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+CMD ["uvicorn", "tahgul.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

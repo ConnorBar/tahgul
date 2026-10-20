@@ -1,6 +1,6 @@
 from sqlalchemy import select
 
-from ledger.models import ApiToken, AuditLog
+from tahgul.models import ApiToken, AuditLog
 
 
 def create(client, name="Siri", scopes=("read", "write")):
@@ -11,7 +11,7 @@ def create(client, name="Siri", scopes=("read", "write")):
 
 def test_token_is_shown_once_and_stored_hashed(logged_in, db):
     t = create(logged_in)
-    assert t["token"].startswith(f"ldg_{t['prefix']}_")
+    assert t["token"].startswith(f"thg_{t['prefix']}_")
     row = db.scalar(select(ApiToken).where(ApiToken.prefix == t["prefix"]))
     assert row.token_hash != t["token"] and t["token"] not in row.token_hash
     listed = logged_in.get("/api/v1/tokens").json()
@@ -51,14 +51,14 @@ def test_revoked_token_stops_working(logged_in, client):
 
 
 def test_bad_tokens_are_rejected(client):
-    for raw in ["nope", "ldg_12345678_wrong", "ldg_short_x"]:
+    for raw in ["nope", "thg_12345678_wrong", "thg_short_x"]:
         r = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {raw}"})
         assert r.status_code == 401
 
 
 def test_token_with_right_prefix_but_wrong_secret(logged_in, client):
     t = create(logged_in)
-    forged = f"ldg_{t['prefix']}_not-the-secret"
+    forged = f"thg_{t['prefix']}_not-the-secret"
     bare = client.__class__(client.app)
     assert (
         bare.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {forged}"}).status_code
@@ -77,7 +77,7 @@ def test_require_scope(logged_in):
     from fastapi import Depends, FastAPI
     from fastapi.testclient import TestClient
 
-    from ledger.deps import require_scope
+    from tahgul.deps import require_scope
 
     app = FastAPI()
 

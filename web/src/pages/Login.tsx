@@ -29,7 +29,7 @@ export default function Login() {
   return (
     <div className="login">
       <form className="card" onSubmit={submit}>
-        <h1>Ledger</h1>
+        <h1>Tahgul</h1>
         <p className="muted">Sign in to your workspace.</p>
 
         {!needsCode ? (

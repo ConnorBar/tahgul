@@ -5,14 +5,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Runtime configuration, read from LEDGER_* environment variables."""
+    """Runtime configuration, read from TAHGUL_* environment variables."""
 
-    model_config = SettingsConfigDict(env_prefix="LEDGER_", env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="TAHGUL_", env_file=".env", extra="ignore")
 
-    database_url: str = "postgresql+psycopg://ledger:ledger@localhost:5432/ledger"
+    database_url: str = "postgresql+psycopg://tahgul:tahgul@localhost:5432/tahgul"
 
     # Sessions
-    session_cookie_name: str = "ledger_session"
+    session_cookie_name: str = "tahgul_session"
     session_days: int = 30
     # Set false only for plain-HTTP local development; Tailscale serve gives HTTPS.
     cookie_secure: bool = True

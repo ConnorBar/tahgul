@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import JSON, DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from ledger.models.base import Base, RecordMixin
+from tahgul.models.base import Base, RecordMixin
 
 
 class User(RecordMixin, Base):

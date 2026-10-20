@@ -6,13 +6,13 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
 
-from ledger import __version__
-from ledger.bootstrap import bootstrap_owner_from_env
-from ledger.config import get_settings
-from ledger.db import get_sessionmaker
-from ledger.routes import auth, system, tokens
+from tahgul import __version__
+from tahgul.bootstrap import bootstrap_owner_from_env
+from tahgul.config import get_settings
+from tahgul.db import get_sessionmaker
+from tahgul.routes import auth, system, tokens
 
-log = logging.getLogger("ledger")
+log = logging.getLogger("tahgul")
 
 
 @asynccontextmanager
@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="Ledger API",
+        title="Tahgul API",
         version=__version__,
         description=(
             "One API for the web app, Siri Shortcuts, scripts and the local agent. "

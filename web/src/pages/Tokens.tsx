@@ -121,7 +121,7 @@ export default function Tokens() {
                   <tr key={t.id} className={t.revoked_at ? "revoked" : undefined}>
                     <td>
                       {t.name}
-                      <div className="muted mono">ldg_{t.prefix}_…</div>
+                      <div className="muted mono">thg_{t.prefix}_…</div>
                     </td>
                     <td>{t.scopes.join(", ")}</td>
                     <td>{t.last_used_at ? new Date(t.last_used_at).toLocaleString() : "Never"}</td>

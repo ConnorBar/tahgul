@@ -11,7 +11,7 @@ from argon2.exceptions import InvalidHashError, VerificationError
 
 _hasher = PasswordHasher()
 
-TOKEN_PREFIX = "ldg"
+TOKEN_PREFIX = "thg"
 MIN_PASSWORD_LENGTH = 12
 
 
@@ -59,7 +59,7 @@ def parse_api_token(token: str) -> str | None:
 
 # --- TOTP -------------------------------------------------------------------
 
-TOTP_ISSUER = "Ledger"
+TOTP_ISSUER = "Tahgul"
 
 
 def new_totp_secret() -> str:

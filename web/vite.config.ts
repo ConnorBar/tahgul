@@ -8,7 +8,7 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": { target: process.env.LEDGER_API_URL ?? "http://localhost:8000", changeOrigin: true },
+      "/api": { target: process.env.TAHGUL_API_URL ?? "http://localhost:8000", changeOrigin: true },
     },
   },
   build: { outDir: "dist", sourcemap: true },

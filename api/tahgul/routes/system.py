@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from ledger import __version__
-from ledger.db import get_db
+from tahgul import __version__
+from tahgul.db import get_db
 
 router = APIRouter(prefix="/api/v1", tags=["system"])
 

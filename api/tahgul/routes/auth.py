@@ -7,13 +7,13 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
-from ledger import audit
-from ledger.config import get_settings
-from ledger.db import get_db
-from ledger.deps import get_principal, require_owner
-from ledger.models import LoginAttempt, User, UserSession
-from ledger.principal import Principal
-from ledger.security import (
+from tahgul import audit
+from tahgul.config import get_settings
+from tahgul.db import get_db
+from tahgul.deps import get_principal, require_owner
+from tahgul.models import LoginAttempt, User, UserSession
+from tahgul.principal import Principal
+from tahgul.security import (
     DUMMY_HASH,
     MIN_PASSWORD_LENGTH,
     hash_password,
@@ -25,7 +25,7 @@ from ledger.security import (
     verify_password,
     verify_totp,
 )
-from ledger.timeutil import utcnow
+from tahgul.timeutil import utcnow
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 

@@ -3,7 +3,7 @@ from typing import Any
 from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from ledger.models.base import Base, RecordMixin
+from tahgul.models.base import Base, RecordMixin
 
 
 class AuditLog(RecordMixin, Base):
