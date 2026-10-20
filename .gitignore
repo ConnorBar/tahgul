@@ -18,3 +18,4 @@ api/ledger/static/
 .env
 *.db
 data/
+*.tsbuildinfo

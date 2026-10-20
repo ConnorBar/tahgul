@@ -1,0 +1,6 @@
+# Lets `docker compose up` work from the repo root. The stack is defined in
+# deploy/docker-compose.yml and reads deploy/.env.
+name: ledger
+
+include:
+  - deploy/docker-compose.yml
