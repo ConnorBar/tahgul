@@ -9,6 +9,7 @@ import {
   type CalendarAccount,
   type CalendarInfo,
 } from "../api";
+import { RemindersSettings } from "../reminders";
 import { Dialog, Empty } from "../ui";
 
 export default function CalendarSettings() {
@@ -50,6 +51,8 @@ export default function CalendarSettings() {
       </div>
 
       {accounts.data?.map((a) => <Account key={a.id} account={a} onChange={refresh} />)}
+
+      {accounts.data && <RemindersSettings accounts={accounts.data} />}
 
       <Dialog open={adding} title="Connect a calendar" onClose={() => setAdding(false)}>
         {adding && <AddAccount onDone={() => { setAdding(false); refresh(); }} />}

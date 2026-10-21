@@ -103,3 +103,53 @@ class CalendarEvent(RecordMixin, Base):
     project: Mapped[Project | None] = relationship()
     task: Mapped[Task | None] = relationship()
     time_entry: Mapped[TimeEntry | None] = relationship(foreign_keys=[time_entry_id])
+
+
+class ReminderList(RecordMixin, Base):
+    """A CalDAV to-do list (VTODO collection) that mirrors tasks: Apple Reminders on the phone."""
+
+    __tablename__ = "reminder_lists"
+    __table_args__ = (UniqueConstraint("account_id", "url"),)
+
+    account_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("calendar_accounts.id"), index=True, nullable=False
+    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
+    url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    enabled: Mapped[bool] = mapped_column(nullable=False, default=True)
+    # Which tasks appear: "due" (open tasks with a due date) or "open" (every open task).
+    include: Mapped[str] = mapped_column(String(10), nullable=False, default="due")
+    # Reminders added to this list on the phone become tasks here (None = ignore them).
+    inbox_project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id"))
+    sync_token: Mapped[str | None] = mapped_column(Text)
+    last_synced_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    last_error: Mapped[str | None] = mapped_column(Text)
+
+    account: Mapped[CalendarAccount] = relationship()
+    workspace: Mapped[Workspace] = relationship()
+    inbox_project: Mapped[Project | None] = relationship()
+
+
+class TaskTodo(RecordMixin, Base):
+    """The link between a task and its to-do on a reminder list."""
+
+    __tablename__ = "task_todos"
+    __table_args__ = (
+        UniqueConstraint("list_id", "task_id", name="uq_task_todos_list_task"),
+        UniqueConstraint("list_id", "href", name="uq_task_todos_list_href"),
+    )
+
+    list_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("reminder_lists.id"), index=True, nullable=False
+    )
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"), index=True, nullable=False)
+    href: Mapped[str] = mapped_column(String(1000), nullable=False)
+    uid: Mapped[str] = mapped_column(String(500), nullable=False)
+    etag: Mapped[str | None] = mapped_column(String(200))
+    # Hash of what was last sent, so unchanged tasks aren't re-sent every sync.
+    pushed_hash: Mapped[str | None] = mapped_column(String(64))
+    # Deleted on the phone: don't recreate it until the task changes in Tahgul.
+    removed_remotely_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+    task: Mapped[Task] = relationship()

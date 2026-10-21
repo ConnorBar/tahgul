@@ -100,7 +100,7 @@ tests/    pytest; tests/smoke: Playwright against a running stack
 
 ## Calendar
 
-Two-way CalDAV sync with the Radicale in the stack (or iCloud): events from the phone show in Tahgul's day/week view next to logged time, and events made in Tahgul or by the agent show on the phone. Optional Billable calendar mirroring every time entry, task time blocks, and "log this meeting as time?". Setup, including adding Radicale to the iPhone, is in [docs/calendar.md](docs/calendar.md).
+Two-way CalDAV sync with the Radicale in the stack (or iCloud): events from the phone show in Tahgul's day/week view next to logged time, and events made in Tahgul or by the agent show on the phone. Optional Billable calendar mirroring every time entry, task time blocks, and "log this meeting as time?". Tasks can also live in the iPhone's Reminders app, two-way (tick it off on the phone, it's done in Tahgul). Setup, including adding Radicale to the iPhone, is in [docs/calendar.md](docs/calendar.md).
 
 ## Scopes and invoices
 

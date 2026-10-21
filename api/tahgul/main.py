@@ -21,6 +21,7 @@ from tahgul.routes import (
     projects,
     public_reports,
     quick,
+    reminders,
     report_links,
     reports,
     scopes,
@@ -49,6 +50,9 @@ def _scheduled_sync() -> None:
                 db.rollback()
                 log.warning("Radicale isn't reachable yet; will try again next run")
             calsync.sync_all(db)
+            from tahgul import todosync
+
+            todosync.sync_lists(db)
     except Exception:  # keep the scheduler alive whatever happens
         log.exception("Scheduled calendar sync failed")
 
@@ -93,6 +97,11 @@ async def lifespan(app: FastAPI):
         threading.Thread(
             target=wh.dispatch_forever, args=(stop_dispatch,), daemon=True, name="webhooks"
         ).start()
+        from tahgul import todosync
+
+        threading.Thread(
+            target=todosync.run_forever, args=(stop_dispatch,), daemon=True, name="reminders"
+        ).start()
         if s.whisper_url:
             from tahgul import transcribe
 
@@ -115,7 +124,8 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    import tahgul.webhooks  # noqa: F401 - registers the change listeners
+    import tahgul.todosync  # noqa: F401 - registers the change listeners
+    import tahgul.webhooks  # noqa: F401
 
     app = FastAPI(
         title="Tahgul API",
@@ -149,6 +159,7 @@ def create_app() -> FastAPI:
     app.include_router(voice_notes.router)
     app.include_router(webhooks.router)
     app.include_router(report_links.router)
+    app.include_router(reminders.router)
     app.include_router(public_reports.router)
     _mount_web(app)
     return app

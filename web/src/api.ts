@@ -169,6 +169,7 @@ const MESSAGES: Record<string, string> = {
   audio_file_missing: "The audio file is missing from storage.",
   whisper_not_configured: "Transcription isn't set up on the server (TAHGUL_WHISPER_URL).",
   not_an_idea: "That project isn't an idea anymore.",
+  reminder_list_in_use: "That list is already synced with Tahgul.",
   cannot_shrink_tracked_time:
     "That would cut into timer entries. Edit those entries directly instead.",
 };
