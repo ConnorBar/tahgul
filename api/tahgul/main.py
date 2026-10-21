@@ -10,7 +10,18 @@ from tahgul import __version__
 from tahgul.bootstrap import bootstrap_owner_from_env
 from tahgul.config import get_settings
 from tahgul.db import get_sessionmaker
-from tahgul.routes import activities, auth, clients, projects, system, tokens, workspaces
+from tahgul.routes import (
+    activities,
+    auth,
+    clients,
+    projects,
+    reports,
+    system,
+    time,
+    timesheet,
+    tokens,
+    workspaces,
+)
 
 log = logging.getLogger("tahgul")
 
@@ -47,6 +58,9 @@ def create_app() -> FastAPI:
     app.include_router(clients.router)
     app.include_router(projects.router)
     app.include_router(activities.router)
+    app.include_router(time.router)
+    app.include_router(timesheet.router)
+    app.include_router(reports.router)
     _mount_web(app)
     return app
 

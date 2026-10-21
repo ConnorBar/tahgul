@@ -1,5 +1,6 @@
 import uuid
 from datetime import date, datetime
+from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -26,6 +27,7 @@ from tahgul.db import get_db
 from tahgul.deps import require_scope
 from tahgul.models import Activity, Client, Project, Workspace
 from tahgul.principal import Principal
+from tahgul.timekeeping import ROUNDING_MINUTES
 from tahgul.timeutil import utcnow
 
 router = APIRouter(prefix="/api/v1", tags=["workspaces"])
@@ -52,6 +54,12 @@ def _check_timezone(v: str | None) -> str | None:
     return v
 
 
+def _check_rounding(v: int | None) -> int | None:
+    if v is not None and v not in ROUNDING_MINUTES:
+        raise ValueError(f"use one of {', '.join(map(str, ROUNDING_MINUTES))} (0 = no rounding)")
+    return v
+
+
 def _check_pattern(v: str | None) -> str | None:
     if v is None:
         return v
@@ -71,10 +79,14 @@ class WorkspaceIn(BaseModel):
     payment_terms_days: int = Field(30, ge=0, le=365)
     invoice_number_pattern: str = numbering.PRESETS[0].pattern
     timezone: str = "America/Chicago"
+    rounding_minutes: int = Field(0, description="Round billed time to this many minutes.")
+    rounding_mode: Literal["up", "nearest", "down"] = "up"
+    timer_warning_minutes: int = Field(240, ge=15, le=24 * 60)
 
     _currency = field_validator("currency")(_check_currency)
     _tz = field_validator("timezone")(_check_timezone)
     _pattern = field_validator("invoice_number_pattern")(_check_pattern)
+    _rounding = field_validator("rounding_minutes")(_check_rounding)
 
 
 class WorkspacePatch(BaseModel):
@@ -87,10 +99,14 @@ class WorkspacePatch(BaseModel):
     payment_terms_days: int | None = Field(None, ge=0, le=365)
     invoice_number_pattern: str | None = None
     timezone: str | None = None
+    rounding_minutes: int | None = None
+    rounding_mode: Literal["up", "nearest", "down"] | None = None
+    timer_warning_minutes: int | None = Field(None, ge=15, le=24 * 60)
 
     _currency = field_validator("currency")(_check_currency)
     _tz = field_validator("timezone")(_check_timezone)
     _pattern = field_validator("invoice_number_pattern")(_check_pattern)
+    _rounding = field_validator("rounding_minutes")(_check_rounding)
 
 
 class WorkspaceOut(BaseModel):
@@ -104,6 +120,9 @@ class WorkspaceOut(BaseModel):
     payment_terms_days: int
     invoice_number_pattern: str
     timezone: str
+    rounding_minutes: int
+    rounding_mode: str
+    timer_warning_minutes: int
     created_at: datetime
     updated_at: datetime
 
