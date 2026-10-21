@@ -37,6 +37,11 @@ def _scheduled_sync() -> None:
 
     try:
         with get_sessionmaker()() as db:
+            try:
+                calsync.ensure_stack_account(db)
+            except Exception:
+                db.rollback()
+                log.warning("Radicale isn't reachable yet; will try again next run")
             calsync.sync_all(db)
     except Exception:  # keep the scheduler alive whatever happens
         log.exception("Scheduled calendar sync failed")

@@ -26,7 +26,7 @@ WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint
 
 INSTRUCTIONS = """\
 Tools for Tahgul, a solo consultant's ops app: tasks on project boards, a running timer,
-logged time, ideas and reports. Projects and clients can be named in plain words
+logged time, calendar events, ideas and reports. Projects and clients can be named in plain words
 ("Acme", "network audit"). If a result has needs_confirmation, ask the person which
 candidate they meant and call again with that exact name; never pick one yourself.
 For anything said in one sentence ("log 2 hours on Acme yesterday afternoon") the
@@ -334,12 +334,78 @@ def build_server(api: TahgulAPI) -> MCPServer:
         }
 
     @mcp.tool(annotations=WRITE)
+    def create_event(
+        title: str,
+        start: str,
+        minutes: int = 60,
+        project: str | None = None,
+        location: str | None = None,
+        all_day: bool = False,
+    ) -> dict:
+        """Put an event on your default calendar; it appears on the phone right away.
+        `start` is local time like "2026-10-23T14:00" (or a date for all-day)."""
+        r = api.call(
+            "POST",
+            "/events",
+            json={
+                "title": title,
+                "start_at": start if "T" in start else f"{start}T00:00:00",
+                "duration_minutes": minutes,
+                "project": project,
+                "location": location,
+                "all_day": all_day,
+            },
+        )
+        return _event_brief(r) if "id" in r else r
+
+    @mcp.tool(annotations=READ)
+    def list_events(date_from: date, date_to: date | None = None) -> dict:
+        """Calendar events between two dates (inclusive), recurring ones expanded."""
+        r = api.call("GET", "/events", params={"from": date_from, "to": date_to or date_from})
+        if isinstance(r, dict):
+            return r
+        return {"count": len(r), "events": [_event_brief(e) for e in r]}
+
+    @mcp.tool(annotations=READ)
+    def events_to_log() -> dict:
+        """Meetings that ended recently, are linked to a project, and have no time logged:
+        ask the person "log this as time?"."""
+        r = api.call("GET", "/events/pending-log")
+        if isinstance(r, dict):
+            return r
+        return {"count": len(r), "events": [_event_brief(e) for e in r]}
+
+    @mcp.tool(annotations=WRITE)
+    def log_event_as_time(event_id: str, notes: str | None = None) -> dict:
+        """Turn a calendar event into a time entry ("I was in that meeting, bill it")."""
+        r = api.call("POST", f"/events/{event_id}/log-time", json={"notes": notes})
+        return _entry_brief(r["entry"]) if "entry" in r else r
+
+    @mcp.tool(annotations=WRITE)
     def capture_idea(title: str, description: str | None = None) -> dict:
         """Save an idea to the ideas inbox (an idea project that can grow into real work)."""
         r = api.call("POST", "/ideas", json={"title": title, "description": description})
         return {"id": r["id"], "name": r["name"], "status": r["status"]} if "id" in r else r
 
     return mcp
+
+
+def _event_brief(e: dict) -> dict:
+    return {
+        k: e.get(k)
+        for k in (
+            "id",
+            "title",
+            "start_at",
+            "end_at",
+            "all_day",
+            "calendar_name",
+            "project_name",
+            "location",
+            "time_entry_id",
+            "sync_pending",
+        )
+    }
 
 
 def _task_lookup(api: TahgulAPI, ref: str) -> dict:

@@ -481,3 +481,50 @@ def sync_all(db: Session) -> dict:
 def new_href(cal: Calendar) -> tuple[str, str]:
     uid = f"{uuid.uuid4()}@tahgul"
     return cal.url.rstrip("/") + "/" + uid.replace("@", "-") + ".ics", uid
+
+
+def ensure_stack_account(db: Session) -> CalendarAccount | None:
+    """Connect the Radicale in the Docker stack on first start, with a "Work" calendar.
+
+    Does nothing once any calendar account exists, or when Radicale isn't configured.
+    """
+    from tahgul.config import get_settings
+
+    s = get_settings()
+    if not (s.radicale_url and s.radicale_user and s.radicale_password and s.secret_key):
+        return None
+    if db.scalar(select(CalendarAccount.id).limit(1)) is not None:
+        return None
+    if _default_workspace(db) is None:
+        return None  # wait until the owner (and their workspace) exists
+    account = CalendarAccount(
+        name="Homelab",
+        kind="radicale",
+        url=s.radicale_url,
+        username=s.radicale_user,
+        password_enc=crypto.encrypt(s.radicale_password),
+    )
+    db.add(account)
+    db.flush()
+    cals = discover(db, account)
+    if not cals:
+        client = client_for(account)
+        try:
+            client.make_calendar(client.home(), "work", "Work", "#3b6ea5")
+        finally:
+            client.close()
+        cals = discover(db, account)
+    first = cals[0]
+    first.writable = first.server_writable
+    first.is_default = first.writable
+    audit.record(
+        db,
+        _sync_actor(),
+        "create",
+        "calendar_account",
+        account.id,
+        {"name": account.name, "url": account.url, "auto": True},
+    )
+    db.commit()
+    log.info("Connected the stack's Radicale as %s", account.name)
+    return account

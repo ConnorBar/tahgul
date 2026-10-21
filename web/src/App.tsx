@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { ApiError, api, post, type Me } from "./api";
+import CalendarPage from "./pages/CalendarPage";
 import Clients from "./pages/Clients";
 import Login from "./pages/Login";
 import ProjectPage from "./pages/ProjectPage";
@@ -65,6 +66,7 @@ function Shell({ me }: { me: Me }) {
           <NavLink to="/" end>Today</NavLink>
           <NavLink to="/tasks">Tasks</NavLink>
           <NavLink to="/time">Time</NavLink>
+          <NavLink to="/calendar">Calendar</NavLink>
           <NavLink to="/projects">Projects</NavLink>
           <NavLink to="/clients">Clients</NavLink>
           <NavLink to="/reports">Reports</NavLink>
@@ -79,6 +81,7 @@ function Shell({ me }: { me: Me }) {
         <Routes>
           <Route path="/" element={<Today me={me} />} />
           <Route path="/time" element={<Time />} />
+          <Route path="/calendar" element={<CalendarPage />} />
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/:id" element={<ProjectPage />} />

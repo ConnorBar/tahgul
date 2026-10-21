@@ -4,6 +4,9 @@ Answers to the open questions in [SPEC.md](SPEC.md), newest first.
 
 | Date | Question | Decision |
 | --- | --- | --- |
+| 2026-10-21 | Calendar home | **Self-hosted Radicale** in the stack, as the spec recommends, reached by the phone over Tailscale on port 8443. iCloud stays available as an account type; the sync code is the same. |
+| 2026-10-21 | CalDAV client | A small client of our own (`api/tahgul/caldav.py`, ~250 lines over httpx) instead of the `caldav` package the spec names. Two-way sync depends on exact control of `If-Match`/`If-None-Match`, sync-collection tokens and 412 handling, and the `caldav` 3.x API was in flux. Tested against a real Radicale server in CI. |
+| 2026-10-21 | Event times | Tahgul writes event times in UTC (no VTIMEZONE needed). Floating times from other apps are read in the workspace time zone. Repeating events are read-only in Tahgul. |
 | 2026-10-21 | Agent limits | Tokens get a fourth scope, `admin`, needed to delete records or change rates. Read / write / invoice tokens can't do either (SPEC: security, agent limits). |
 | 2026-10-21 | Starting workspace | New installs get a "Consulting" workspace with the defaults below; more can be added under Settings. |
 | 2026-10-20 | App name | **Tahgul.** The spec still says "Ledger (working name)"; the code, env vars (`TAHGUL_*`), token prefix (`thg_`) and UI use Tahgul. |

@@ -18,6 +18,7 @@ from tahgul.deps import require_scope
 from tahgul.models import (
     AuditLog,
     BoardColumn,
+    CalendarEvent,
     Client,
     Comment,
     Project,
@@ -153,6 +154,9 @@ class TaskDetail(TaskOut):
     subtasks: list[TaskOut] = []
     blockers: list[TaskOut] = []
     blocking: list[TaskOut] = []
+    calendar_block_id: uuid.UUID | None = Field(
+        None, description="The task's time block on the calendar, if it has one"
+    )
 
 
 class CommentIn(BaseModel):
@@ -364,11 +368,20 @@ def detail(db: Session, t: Task) -> TaskDetail:
         if base.blocks
         else []
     )
+    block = db.scalar(
+        select(CalendarEvent.id).where(
+            CalendarEvent.task_id == t.id,
+            CalendarEvent.origin == "task_block",
+            CalendarEvent.deleted_at.is_(None),
+            CalendarEvent.pending_delete.is_(False),
+        )
+    )
     return TaskDetail(
         **base.model_dump(),
         subtasks=outs(db, list(subtasks)),
         blockers=outs(db, list(blockers)),
         blocking=outs(db, list(blocking)),
+        calendar_block_id=block,
     )
 
 

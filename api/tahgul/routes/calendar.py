@@ -337,13 +337,10 @@ def create_remote_calendar(
 ):
     """Make a calendar on the server (e.g. "Billable", to mirror time entries) and enable it."""
     a = get_live(db, CalendarAccount, account_id, "calendar_account")
-    existing = [c for c in a.calendars if c.deleted_at is None]
-    if not existing:
-        raise HTTPException(409, detail="no_calendar_home")
     client = calsync.client_for(a)
     try:
         slug = "tahgul-" + "".join(ch for ch in name.lower() if ch.isalnum())[:30]
-        url = client.make_calendar(existing[0].url, slug, name, "#2f5d50")
+        url = client.make_calendar(client.home(), slug, name, "#2f5d50")
     except CalDAVError as exc:
         raise _sync_error(exc) from exc
     finally:

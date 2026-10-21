@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     # Calendar sync
     scheduler_enabled: bool = True
     sync_minutes: int = 3
+    # The Radicale in the stack: when set, Tahgul connects to it on first start.
+    radicale_url: str | None = None
+    radicale_user: str | None = None
+    radicale_password: str | None = None
 
     # Where the built web app lives. Empty or missing directory = API only.
     static_dir: Path = Path(__file__).parent / "static"

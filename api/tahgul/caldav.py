@@ -148,7 +148,15 @@ class CalDAVClient:
 
     # --- discovery ------------------------------------------------------------------
 
-    def calendars(self) -> list[RemoteCalendar]:
+    def home(self) -> str:
+        """The calendar-home-set URL, where new calendars go."""
+        principal = self._principal()
+        home = self._href_prop(principal, "c:calendar-home-set")
+        if not home:
+            raise CalDAVError("The server didn't say where your calendars are.")
+        return home
+
+    def _principal(self) -> str:
         principal = None
         for start in (self.base_url, urljoin(self.base_url, "/.well-known/caldav")):
             try:
@@ -158,12 +166,11 @@ class CalDAVClient:
                     raise
                 continue
             if principal:
-                break
-        if not principal:
-            raise CalDAVError("This doesn't look like a CalDAV server (no principal found).")
-        home = self._href_prop(principal, "c:calendar-home-set")
-        if not home:
-            raise CalDAVError("The server didn't say where your calendars are.")
+                return principal
+        raise CalDAVError("This doesn't look like a CalDAV server (no principal found).")
+
+    def calendars(self) -> list[RemoteCalendar]:
+        home = self.home()
         root = self._multistatus(
             "PROPFIND",
             home,
@@ -213,12 +220,9 @@ class CalDAVClient:
             )
         return out
 
-    def make_calendar(
-        self, home_or_calendar_url: str, slug: str, name: str, colour: str | None = None
-    ) -> str:
-        """MKCALENDAR next to an existing calendar; returns the new calendar's URL."""
-        parent = home_or_calendar_url.rstrip("/").rsplit("/", 1)[0] + "/"
-        url = urljoin(parent, slug + "/")
+    def make_calendar(self, home_url: str, slug: str, name: str, colour: str | None = None) -> str:
+        """MKCALENDAR in the calendar home; returns the new calendar's URL."""
+        url = urljoin(home_url if home_url.endswith("/") else home_url + "/", slug + "/")
         colour_xml = f"<ic:calendar-color>{colour}</ic:calendar-color>" if colour else ""
         body = f"""<c:mkcalendar xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"
   xmlns:ic="http://apple.com/ns/ical/"><d:set><d:prop><d:displayname>{name}</d:displayname>

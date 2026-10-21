@@ -35,7 +35,7 @@ class Phone:
         self.base = base
 
     def calendar(self, slug, name):
-        return self.c.make_calendar(self.base + "connor/x/", slug, name)
+        return self.c.make_calendar(self.c.home(), slug, name)
 
     def add(self, cal_url, title, start, end, extra="", modified=None):
         uid = str(uuid.uuid4())
@@ -390,6 +390,7 @@ def test_task_time_block(cal):
     ).json()
     r = c.post(f"{API}/tasks/{t['id']}/block")
     assert r.status_code == 200, r.text
+    assert c.get(f"{API}/tasks/{t['id']}").json()["calendar_block_id"] == r.json()["id"]
     data = list(phone.events(cal["work"]).values())[0]
     assert "SUMMARY:Firewall review (#1)" in data
     assert "DTSTART:20261029T180000Z" in data and "DTEND:20261029T193000Z" in data
@@ -461,3 +462,23 @@ def test_bad_login_is_reported(logged_in, tmp_path):
         )
         assert r.status_code == 502 and r.json()["detail"]["code"] == "calendar_server_error"
         assert base
+
+
+def test_stack_radicale_is_connected_on_first_start(logged_in, tmp_path, db, monkeypatch):
+    from tahgul import calsync
+    from tahgul.config import get_settings
+
+    with radicale_server(str(tmp_path / "stack")) as base:
+        s = get_settings()
+        monkeypatch.setattr(s, "radicale_url", base)
+        monkeypatch.setattr(s, "radicale_user", "connor")
+        monkeypatch.setattr(s, "radicale_password", "pw")
+        account = calsync.ensure_stack_account(db)
+        assert account is not None and account.name == "Homelab"
+        cals = logged_in.get(f"{API}/calendars").json()
+        assert [(c["name"], c["writable"], c["is_default"]) for c in cals] == [("Work", True, True)]
+        # Second run does nothing.
+        assert calsync.ensure_stack_account(db) is None
+        # And events can be made straight away.
+        r = logged_in.post(f"{API}/events", json={"title": "Hi", "start_at": "2026-10-30T09:00:00"})
+        assert r.status_code == 201 and r.json()["sync_pending"] is False

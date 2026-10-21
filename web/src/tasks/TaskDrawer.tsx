@@ -58,6 +58,10 @@ function TaskBody({ id, onClose, onOpen }: { id: string; onClose: () => void; on
     mutationFn: () => post("/timer/start", { task_id: id }),
     onSuccess: invalidateTime,
   });
+  const block = useMutation({
+    mutationFn: (on: boolean) => (on ? post(`/tasks/${id}/block`) : del(`/tasks/${id}/block`)),
+    onSuccess: invalidate,
+  });
 
   if (!t) return <p className="muted">Loading…</p>;
 
@@ -132,8 +136,15 @@ function TaskBody({ id, onClose, onOpen }: { id: string; onClose: () => void; on
           {t.estimate_minutes ? ` of ${hm(t.estimate_minutes * 60)}` : ""}
         </div>
         <button onClick={() => timer.mutate()} disabled={timer.isPending}>▶ Start timer</button>
-        {(save.isError || timer.isError || remove.isError) && (
-          <p className="error small">{errorMessage(save.error ?? timer.error ?? remove.error)}</p>
+        {t.due_date && t.due_time && (
+          <button className="ghost" disabled={block.isPending}
+            onClick={() => block.mutate(!t.calendar_block_id)}
+            title="A time block on your calendar at the due time, as long as the estimate">
+            {t.calendar_block_id ? "Remove from calendar" : "Block time on calendar"}
+          </button>
+        )}
+        {(save.isError || timer.isError || remove.isError || block.isError) && (
+          <p className="error small">{errorMessage(save.error ?? timer.error ?? remove.error ?? block.error)}</p>
         )}
         <button className="danger" disabled={remove.isPending}
           onClick={() => confirm(`Delete ${t.ref} and its subtasks?`) && remove.mutate()}>

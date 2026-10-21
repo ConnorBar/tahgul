@@ -68,6 +68,9 @@ jobs:
       - name: Build image and smoke-test the stack
         env:
           POSTGRES_PASSWORD: ci-password
+          TAHGUL_SECRET_KEY: ci-secret-key-long-enough-for-fernet
+          RADICALE_USER: ci
+          RADICALE_PASSWORD: ci-calendar-password
           TAHGUL_COOKIE_SECURE: "false"
           TAHGUL_OWNER_EMAIL: ci@example.com
           TAHGUL_OWNER_PASSWORD: ci-password-long

@@ -5,7 +5,8 @@
 #
 # Development: the API is published on 127.0.0.1:8000 only (never the LAN).
 # Homelab: also start the Tailscale sidecar with `--profile tailscale`; it serves
-# https://tahgul.<tailnet>.ts.net and is the only way in from other devices.
+# https://tahgul.<tailnet>.ts.net (the app) and https://tahgul.<tailnet>.ts.net:8443
+# (Radicale, for the iPhone's Calendar app) and is the only way in from other devices.
 
 name: tahgul
 
@@ -25,6 +26,15 @@ services:
       timeout: 3s
       retries: 20
 
+  radicale:
+    build: ./radicale
+    restart: unless-stopped
+    environment:
+      RADICALE_USER: ${RADICALE_USER:?set RADICALE_USER in deploy/.env}
+      RADICALE_PASSWORD: ${RADICALE_PASSWORD:?set RADICALE_PASSWORD in deploy/.env}
+    volumes:
+      - radicale-data:/data
+
   api:
     build:
       context: ..
@@ -33,8 +43,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      radicale:
+        condition: service_started
     environment:
       TAHGUL_DATABASE_URL: postgresql+psycopg://tahgul:${POSTGRES_PASSWORD}@db:5432/tahgul
+      TAHGUL_SECRET_KEY: ${TAHGUL_SECRET_KEY:?set TAHGUL_SECRET_KEY in deploy/.env}
+      # Tahgul talks to Radicale inside the stack; your phone uses Tailscale (port 8443).
+      TAHGUL_RADICALE_URL: http://radicale:5232/
+      TAHGUL_RADICALE_USER: ${RADICALE_USER}
+      TAHGUL_RADICALE_PASSWORD: ${RADICALE_PASSWORD}
       # Plain HTTP on localhost during development; true behind Tailscale HTTPS.
       TAHGUL_COOKIE_SECURE: ${TAHGUL_COOKIE_SECURE:-true}
       TAHGUL_OWNER_EMAIL: ${TAHGUL_OWNER_EMAIL:-}
@@ -57,7 +74,9 @@ services:
       - ./tailscale/serve.json:/config/serve.json:ro
     depends_on:
       - api
+      - radicale
 
 volumes:
   db-data:
+  radicale-data:
   ts-state:
