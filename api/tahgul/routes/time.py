@@ -24,7 +24,7 @@ from tahgul.crud import (
 )
 from tahgul.db import get_db
 from tahgul.deps import require_scope
-from tahgul.models import Activity, Project, TimeEntry, Workspace
+from tahgul.models import Activity, Project, Task, TimeEntry, Workspace
 from tahgul.principal import Principal
 from tahgul.timeutil import as_utc, utcnow
 
@@ -50,6 +50,8 @@ class TimeEntryOut(BaseModel):
     activity_id: uuid.UUID | None
     activity_name: str | None = None
     task_id: uuid.UUID | None
+    task_ref: str | None = None
+    task_title: str | None = None
     start_at: datetime
     end_at: datetime | None
     duration_seconds: int = Field(description="Elapsed so far while running.")
@@ -71,6 +73,7 @@ class TimeEntryOut(BaseModel):
 class EntryFields(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
+    task_id: uuid.UUID | None = Field(None, description="Sets the project too")
     project_id: uuid.UUID | None = None
     activity_id: uuid.UUID | None = None
     notes: str | None = Field(None, max_length=5000)
@@ -135,6 +138,7 @@ def _q():
     return select(TimeEntry).options(
         selectinload(TimeEntry.workspace),
         selectinload(TimeEntry.activity),
+        selectinload(TimeEntry.task),
         selectinload(TimeEntry.project).selectinload(Project.client),
         selectinload(TimeEntry.project).selectinload(Project.workspace),
     )
@@ -165,9 +169,21 @@ def out(e: TimeEntry, overlaps: list[TimeEntry] | None = None) -> TimeEntryOut:
     o.client_id = e.project.client_id if e.project else None
     o.client_name = e.project.client.name if e.project and e.project.client else None
     o.activity_name = e.activity.name if e.activity else None
+    if e.task is not None:
+        o.task_ref, o.task_title = f"#{e.task.number}", e.task.title
     if overlaps is not None:
         o.overlaps = [x.id for x in overlaps]
     return o
+
+
+def _task_project(db: Session, task_id, project_id):
+    """A task implies its project; a project given alongside must match."""
+    if not task_id:
+        return None, project_id
+    task = get_live(db, Task, task_id, "task")
+    if project_id and project_id != task.project_id:
+        raise HTTPException(422, detail="task_in_other_project")
+    return task, task.project_id
 
 
 def _refs(
@@ -240,7 +256,8 @@ def start_timer(
 ):
     """Start the timer. A timer already running is stopped first (one at a time)."""
     guard_rate_fields(principal, body.model_dump(exclude_none=True), RATE_FIELDS)
-    ws, project, activity = _refs(db, body.workspace_id, body.project_id, body.activity_id)
+    task, project_id = _task_project(db, body.task_id, body.project_id)
+    ws, project, activity = _refs(db, body.workspace_id, project_id, body.activity_id)
     now = utcnow()
     start = as_utc(tk.ensure_aware(body.start_at, tk.tz(ws))) if body.start_at else now
     if start > now + timedelta(minutes=1):
@@ -257,8 +274,9 @@ def start_timer(
         workspace=ws,
         project=project,
         activity=activity,
+        task=task,
         start_at=start,
-        notes=body.notes,
+        notes=body.notes if body.notes is not None else (task.title if task else None),
         billable=body.billable if body.billable is not None else _billable(activity),
         rate_override=body.rate_override,
         source=_source(principal, "timer"),
@@ -376,7 +394,8 @@ def create_entry(
 ):
     """Log time after the fact, e.g. two hours on Acme yesterday afternoon."""
     guard_rate_fields(principal, body.model_dump(exclude_none=True), RATE_FIELDS)
-    ws, project, activity = _refs(db, body.workspace_id, body.project_id, body.activity_id)
+    task, project_id = _task_project(db, body.task_id, body.project_id)
+    ws, project, activity = _refs(db, body.workspace_id, project_id, body.activity_id)
     zone = tk.tz(ws)
     start = as_utc(tk.ensure_aware(body.start_at, zone))
     end = (
@@ -389,6 +408,7 @@ def create_entry(
         workspace=ws,
         project=project,
         activity=activity,
+        task=task,
         start_at=start,
         notes=body.notes,
         billable=body.billable if body.billable is not None else _billable(activity),
@@ -421,10 +441,15 @@ def get_entry(
 
 
 def _apply_patch(db: Session, e: TimeEntry, body: BaseModel, principal: Principal) -> TimeEntry:
-    data = patch_data(body, {"project_id", "activity_id", "notes", "rate_override"})
+    data = patch_data(body, {"task_id", "project_id", "activity_id", "notes", "rate_override"})
     guard_rate_fields(principal, data, RATE_FIELDS)
     if "end_at" in data and e.running:
         raise HTTPException(422, detail="use_timer_stop")
+    task = None
+    if data.get("task_id"):
+        task, data["project_id"] = _task_project(db, data["task_id"], data.get("project_id"))
+    elif "project_id" in data and e.task_id and e.task and e.task.project_id != data["project_id"]:
+        data["task_id"] = None  # moved off the task's project
     _, project, activity = _refs(
         db,
         e.workspace_id,
@@ -449,6 +474,8 @@ def _apply_patch(db: Session, e: TimeEntry, body: BaseModel, principal: Principa
         e.project = project
     if "activity_id" in data:
         e.activity = activity
+    if "task_id" in data:
+        e.task = task
     if not e.running and ({"start_at", "end_at"} & changes.keys()):
         tk.close(e, e.end_at)
     if PRICING_FIELDS & changes.keys():

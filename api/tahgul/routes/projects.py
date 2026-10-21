@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
-from tahgul import audit, rates
+from tahgul import audit, rates, tasks_service
 from tahgul.crud import (
     HoursIn,
     MoneyIn,
@@ -180,6 +180,7 @@ def create_project(
     p = Project(workspace_id=workspace_id, **data)
     db.add(p)
     db.flush()
+    tasks_service.ensure_columns(db, p)
     audit.record(db, principal, "create", "project", p.id, snapshot(data))
     db.commit()
     return _out(_load(db, p.id))
