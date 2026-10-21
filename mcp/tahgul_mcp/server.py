@@ -389,6 +389,56 @@ def build_server(api: TahgulAPI) -> MCPServer:
         return {"id": r["id"], "name": r["name"], "status": r["status"]} if "id" in r else r
 
     @mcp.tool(annotations=READ)
+    def budget_left(project: str) -> dict:
+        """What's left on a project: its budget and each agreed scope (hours and money used,
+        budget, warning at 80%/100%), plus work logged outside every scope. "What's left on
+        the Acme audit?" """
+        found = api.call("GET", "/projects", params={"q": project})
+        if isinstance(found, dict):
+            return found
+        exact = [p for p in found if p["name"].lower() == project.lower()]
+        hits = exact or found
+        if len(hits) != 1:
+            return {
+                "needs_confirmation": bool(hits),
+                "question": f"Which project did you mean by “{project}”?",
+                "candidates": [p["name"] for p in hits[:8]],
+            }
+        p = hits[0]
+        rep = api.call("GET", f"/projects/{p['id']}/scopes")
+        if "scopes" not in rep:
+            return rep
+        scopes = []
+        for s in rep["scopes"]:
+            b = s.get("burn") or {}
+            left = (
+                f"{float(s['budget_hours']) - float(b.get('hours', 0)):.2f}"
+                if s.get("budget_hours")
+                else None
+            )
+            scopes.append(
+                {
+                    "title": s["title"],
+                    "type": s["type"],
+                    "status": s["status"],
+                    "hours_used": b.get("hours"),
+                    "budget_hours": s.get("budget_hours"),
+                    "hours_left": left,
+                    "amount_used": b.get("amount"),
+                    "budget_amount": s.get("budget_amount"),
+                    "warning": b.get("warning"),
+                }
+            )
+        return {
+            "project": p["name"],
+            "client": p.get("client_name"),
+            "project_budget_hours": p.get("budget_hours"),
+            "scopes": scopes,
+            "outside_scope_hours": rep["outside_scope_hours"],
+            "scope_creep": rep["creep"],
+        }
+
+    @mcp.tool(annotations=READ)
     def voice_notes(project: str | None = None, query: str | None = None) -> dict:
         """Voice notes with their transcripts, newest first: on one project or idea (by
         name), or matching words in the title or transcript. Use it to pull to-dos out of
