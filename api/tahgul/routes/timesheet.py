@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from tahgul import audit
+from tahgul import audit, mirror
 from tahgul import timekeeping as tk
 from tahgul.crud import TwoPlaces, resolve_workspace
 from tahgul.db import get_db
@@ -149,6 +149,7 @@ def set_cell(
         if not e.running and e.project_id == body.project_id and e.activity_id == body.activity_id
     ]
     current = sum(e.duration_seconds or 0 for e in cell)
+    created: TimeEntry | None = None
     target = int((body.hours * 3600).to_integral_value())
     delta = target - current
 
@@ -170,6 +171,7 @@ def set_cell(
         tk.close(e, start + timedelta(seconds=delta))
         tk.price(e)
         db.add(e)
+        created = e
         db.flush()
         audit.record(db, principal, "create", "time_entry", e.id, {"timesheet": str(body.hours)})
     elif delta < 0:
@@ -204,4 +206,5 @@ def set_cell(
                 detail="cannot_shrink_tracked_time",
             )
     db.commit()
+    mirror.mirror_entries(db, principal, cell + ([created] if created else []))
     return get_week(workspace_id=ws.id, week=body.date, _=principal, db=db)

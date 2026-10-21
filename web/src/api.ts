@@ -134,6 +134,13 @@ const MESSAGES: Record<string, string> = {
   entry_invoiced: "This time is on an invoice, so it's locked.",
   start_in_future: "The start can't be in the future.",
   no_timer_running: "No timer is running.",
+  calendar_read_only: "That calendar is read-only in Tahgul. Change it under Settings → Calendars.",
+  calendar_read_only_on_server: "The calendar server doesn't allow changes to that calendar.",
+  recurring_event_edit_on_phone: "Repeating events are edited in your phone's Calendar app.",
+  no_writable_calendar: "No calendar is set up for Tahgul to write to yet (Settings → Calendars).",
+  already_logged: "That event is already logged as time.",
+  task_needs_due_time: "Give the task a due date and time first.",
+  secret_key_missing: "Set TAHGUL_SECRET_KEY on the server before connecting calendars.",
   link_cycle: "That would make the two tasks wait on each other.",
   parent_cycle: "A task can't be inside its own subtask.",
   column_has_tasks: "Move this column's tasks somewhere first.",
@@ -146,6 +153,8 @@ export function errorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     if (typeof err.detail === "string") return MESSAGES[err.detail] ?? err.detail;
     const d = err.detail as { code?: string; choices?: string[] } | null;
+    if ((d as { code?: string; message?: string })?.code === "calendar_server_error")
+      return (d as { message: string }).message;
     if (d?.code === "unknown_status") return `Unknown status. Use one of: ${d.choices?.join(", ")}.`;
     if (Array.isArray(err.detail))
       return err.detail
@@ -288,7 +297,12 @@ export type Task = {
   updated_at: string;
 };
 
-export type TaskDetail = Task & { subtasks: Task[]; blockers: Task[]; blocking: Task[] };
+export type TaskDetail = Task & {
+  subtasks: Task[];
+  blockers: Task[];
+  blocking: Task[];
+  calendar_block_id: string | null;
+};
 
 export type HistoryItem = {
   kind: "comment" | "change";
@@ -355,3 +369,49 @@ export function taskQuery(f: TaskFilters, today: string, extra: Record<string, s
   }
   return p.toString();
 }
+
+export type CalendarInfo = {
+  id: string;
+  account_id: string;
+  workspace_id: string;
+  name: string;
+  colour: string | null;
+  enabled: boolean;
+  server_writable: boolean;
+  writable: boolean;
+  is_default: boolean;
+  mirror_time_entries: boolean;
+  last_synced_at: string | null;
+};
+
+export type CalendarAccount = {
+  id: string;
+  name: string;
+  kind: "radicale" | "icloud" | "caldav";
+  url: string;
+  username: string;
+  last_synced_at: string | null;
+  last_error: string | null;
+  calendars: CalendarInfo[];
+};
+
+export type CalEvent = {
+  id: string;
+  calendar_id: string;
+  calendar_name: string;
+  colour: string | null;
+  writable: boolean;
+  title: string;
+  description: string | null;
+  location: string | null;
+  start_at: string;
+  end_at: string;
+  all_day: boolean;
+  recurring: boolean;
+  project_id: string | null;
+  project_name: string | null;
+  task_id: string | null;
+  time_entry_id: string | null;
+  origin: string | null;
+  sync_pending: boolean;
+};

@@ -7,7 +7,7 @@ The full design is in [docs/SPEC.md](docs/SPEC.md). Each milestone in the build 
 ## Run it
 
 ```sh
-cp deploy/.env.example deploy/.env   # set POSTGRES_PASSWORD, owner email and password
+cp deploy/.env.example deploy/.env   # passwords, TAHGUL_SECRET_KEY, Radicale login, owner
 docker compose up --build
 ```
 
@@ -60,8 +60,8 @@ After changing models: `cd api && alembic revision --autogenerate -m "what chang
 api/      FastAPI app (tahgul/), Alembic migrations
 web/      React + TypeScript + Vite, built into the API image
 mcp/      tahgul-mcp server (MCP tools over the REST API)
-deploy/   docker-compose.yml, Tailscale serve config, entrypoint
-docs/     SPEC.md, decisions.md, siri-shortcuts.md, agent.md
+deploy/   docker-compose.yml, Radicale image, Tailscale serve config, entrypoint
+docs/     SPEC.md, decisions.md, siri-shortcuts.md, agent.md, calendar.md
 tests/    pytest
 ```
 
@@ -94,6 +94,10 @@ tests/    pytest
 - Every write accepts an `Idempotency-Key` header. A retry with the same key gets the first response back (`Idempotent-Replayed: true`), so a repeated voice command never makes two tasks.
 - Projects, clients and activities can be named instead of passed by id (`"project": "acme"`). Anything fuzzy or ambiguous returns `409 needs_confirmation` with candidates instead of a guess.
 - `tahgul-mcp` (in `mcp/`) gives a local model the same powers as MCP tools; see [docs/agent.md](docs/agent.md).
+
+## Calendar
+
+Two-way CalDAV sync with the Radicale in the stack (or iCloud): events from the phone show in Tahgul's day/week view next to logged time, and events made in Tahgul or by the agent show on the phone. Optional Billable calendar mirroring every time entry, task time blocks, and "log this meeting as time?". Setup, including adding Radicale to the iPhone, is in [docs/calendar.md](docs/calendar.md).
 
 ## Rates
 

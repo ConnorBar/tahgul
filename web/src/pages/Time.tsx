@@ -318,7 +318,7 @@ function Entries({ week }: { week: Week }) {
   );
 }
 
-function EntryForm({
+export function EntryForm({
   entry,
   defaultDate,
   onDone,

@@ -13,6 +13,8 @@
 | `start_timer` / `stop_timer` / `timer_status` | The running timer |
 | `log_time` | Log time after the fact |
 | `summary` | Hours and money by client and project, with budget left |
+| `create_event` / `list_events` | The calendar (events land on the phone right away) |
+| `events_to_log` / `log_event_as_time` | "Log this meeting as time?" |
 | `capture_idea` | Save to the ideas inbox |
 
 There are no delete or rate tools, and the agent's token should have **read** and **write** only. Agent writes show in each task's history as made by the token's name.

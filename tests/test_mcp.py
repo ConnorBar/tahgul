@@ -56,6 +56,10 @@ def test_tools_are_listed(mcp):
         "log_time",
         "summary",
         "capture_idea",
+        "create_event",
+        "list_events",
+        "events_to_log",
+        "log_event_as_time",
     }
     tools = {t.name: t for t in anyio.run(mcp.list_tools)}
     assert tools["list_tasks"].annotations.read_only_hint is True

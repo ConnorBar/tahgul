@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from tahgul import audit, lookup, quickadd
+from tahgul import audit, lookup, mirror, quickadd
 from tahgul import tasks_service as ts
 from tahgul.crud import apply_changes, get_live, patch_data, require_admin, resolve_workspace
 from tahgul.db import get_db
@@ -18,6 +18,7 @@ from tahgul.deps import require_scope
 from tahgul.models import (
     AuditLog,
     BoardColumn,
+    CalendarEvent,
     Client,
     Comment,
     Project,
@@ -153,6 +154,9 @@ class TaskDetail(TaskOut):
     subtasks: list[TaskOut] = []
     blockers: list[TaskOut] = []
     blocking: list[TaskOut] = []
+    calendar_block_id: uuid.UUID | None = Field(
+        None, description="The task's time block on the calendar, if it has one"
+    )
 
 
 class CommentIn(BaseModel):
@@ -364,11 +368,20 @@ def detail(db: Session, t: Task) -> TaskDetail:
         if base.blocks
         else []
     )
+    block = db.scalar(
+        select(CalendarEvent.id).where(
+            CalendarEvent.task_id == t.id,
+            CalendarEvent.origin == "task_block",
+            CalendarEvent.deleted_at.is_(None),
+            CalendarEvent.pending_delete.is_(False),
+        )
+    )
     return TaskDetail(
         **base.model_dump(),
         subtasks=outs(db, list(subtasks)),
         blockers=outs(db, list(blockers)),
         blocking=outs(db, list(blocking)),
+        calendar_block_id=block,
     )
 
 
@@ -731,6 +744,8 @@ def update_task(
     if changes:
         audit.record(db, principal, "update", "task", t.id, changes)
         db.commit()
+        if {"title", "due_date", "due_time"} & changes.keys():
+            mirror.refresh_task_block(db, principal, t)
     return out(db, _load(db, task_id))
 
 
@@ -780,6 +795,8 @@ def delete_task(
         link.deleted_at = now
     audit.record(db, principal, "delete", "task", t.id, {"title": t.title})
     db.commit()
+    for d in doomed:
+        mirror.refresh_task_block(db, principal, d)
 
 
 # --- Blocked-by links ------------------------------------------------------------------

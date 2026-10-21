@@ -1,0 +1,23 @@
+[server]
+hosts = 0.0.0.0:5232
+max_content_length = 10000000
+
+[auth]
+type = htpasswd
+htpasswd_filename = /data/users
+htpasswd_encryption = bcrypt
+# Slow down password guessing.
+delay = 1
+
+[storage]
+filesystem_folder = /data/collections
+
+[rights]
+# Each user sees only their own calendars.
+type = owner_only
+
+[web]
+type = none
+
+[logging]
+level = warning

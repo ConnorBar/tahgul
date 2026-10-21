@@ -14,6 +14,7 @@ from tahgul.idempotency import IdempotencyMiddleware
 from tahgul.routes import (
     activities,
     auth,
+    calendar,
     clients,
     ideas,
     projects,
@@ -30,6 +31,22 @@ from tahgul.routes import (
 log = logging.getLogger("tahgul")
 
 
+def _scheduled_sync() -> None:
+    """Pull every calendar and retry pending pushes (SPEC: pull every 2–5 minutes)."""
+    from tahgul import calsync
+
+    try:
+        with get_sessionmaker()() as db:
+            try:
+                calsync.ensure_stack_account(db)
+            except Exception:
+                db.rollback()
+                log.warning("Radicale isn't reachable yet; will try again next run")
+            calsync.sync_all(db)
+    except Exception:  # keep the scheduler alive whatever happens
+        log.exception("Scheduled calendar sync failed")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     s = get_settings()
@@ -39,7 +56,25 @@ async def lifespan(app: FastAPI):
                 bootstrap_owner_from_env(db, s.owner_email, s.owner_password)
         except SQLAlchemyError:
             log.exception("Owner bootstrap failed; have migrations been run?")
+    scheduler = None
+    if s.scheduler_enabled:
+        from datetime import UTC, datetime, timedelta
+
+        from apscheduler.schedulers.background import BackgroundScheduler
+
+        scheduler = BackgroundScheduler(daemon=True)
+        scheduler.add_job(
+            _scheduled_sync,
+            "interval",
+            minutes=max(1, s.sync_minutes),
+            max_instances=1,
+            coalesce=True,
+            next_run_time=datetime.now(UTC) + timedelta(seconds=20),
+        )
+        scheduler.start()
     yield
+    if scheduler is not None:
+        scheduler.shutdown(wait=False)
 
 
 def create_app() -> FastAPI:
@@ -69,6 +104,7 @@ def create_app() -> FastAPI:
     app.include_router(tasks.router)
     app.include_router(ideas.router)
     app.include_router(quick.router)
+    app.include_router(calendar.router)
     _mount_web(app)
     return app
 

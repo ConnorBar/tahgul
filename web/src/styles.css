@@ -314,6 +314,30 @@ tfoot td { font-weight: 600; border-top: 2px solid var(--line); border-bottom: 0
 .cal-task.overdue { color: var(--danger); }
 .cal-task.is-done { text-decoration: line-through; color: var(--muted); }
 
+/* Calendar */
+.fc-wrap { padding: 0.75rem; }
+.calendar-page .fc { --fc-border-color: var(--line); --fc-page-bg-color: var(--surface); --fc-neutral-bg-color: var(--bg); --fc-today-bg-color: rgb(47 93 80 / 0.05); --fc-now-indicator-color: var(--danger); font-size: 0.88rem; }
+.calendar-page .fc .fc-button { background: var(--surface); color: var(--text); border: 1px solid var(--line); font-weight: 500; text-transform: none; box-shadow: none; }
+.calendar-page .fc .fc-button-active, .calendar-page .fc .fc-button:hover { background: var(--bg) !important; color: var(--text) !important; border-color: var(--accent) !important; }
+.calendar-page .fc .fc-toolbar-title { font-size: 1.1rem; }
+.calendar-page .fc-event { cursor: pointer; }
+.calendar-page .fc-entry { background: color-mix(in srgb, var(--accent) 22%, var(--surface)) !important; border: 0 !important; border-left: 3px solid var(--accent) !important; }
+.calendar-page .fc-entry .fc-event-main { color: var(--text); }
+.calendar-page .fc-nonbillable { background: repeating-linear-gradient(135deg, var(--bg), var(--bg) 6px, color-mix(in srgb, var(--accent) 12%, var(--bg)) 6px, color-mix(in srgb, var(--accent) 12%, var(--bg)) 12px) !important; }
+.calendar-page .fc-logged { opacity: 0.6; }
+.calendar-page .fc-pending { outline: 2px dashed #c28a1e; }
+.legend { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; color: var(--muted); }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.sw.entry { background: color-mix(in srgb, var(--accent) 22%, var(--surface)); border-left: 3px solid var(--accent); }
+.sw.event { background: #6b6f76; }
+.pending-log { display: flex; flex-direction: column; gap: 0.5rem; margin: 0.75rem 0; }
+.banner.inline { border: 1px solid var(--line); border-radius: var(--radius); }
+.event-detail h3 { margin: 0 0 0.25rem; }
+.pre { white-space: pre-wrap; }
+.seg { display: inline-flex; margin-bottom: 0.9rem; }
+.cal-table td, .cal-table th { text-align: center; }
+.cal-table td:first-child, .cal-table th:first-child { text-align: left; }
+
 /* Workspace switcher */
 .ws-name { color: var(--muted); }
 .ws-switch { padding: 0.3rem 1.8rem 0.3rem 0.5rem; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font: inherit; }

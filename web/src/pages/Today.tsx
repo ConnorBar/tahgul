@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { api, type Client, type Project, type Me } from "../api";
 import { money } from "../ui";
 import { useWorkspace } from "../workspace";
+import { PendingLog } from "./CalendarPage";
 
 export default function Today({ me }: { me: Me }) {
   const { current: ws } = useWorkspace();
@@ -28,6 +29,8 @@ export default function Today({ me }: { me: Me }) {
           putting real client data in.
         </div>
       )}
+
+      <PendingLog />
 
       {!ws.default_rate && (
         <div className="notice">
@@ -58,8 +61,8 @@ export default function Today({ me }: { me: Me }) {
       <div className="card">
         <h2>Coming next</h2>
         <p className="muted">
-          Calendar sync arrives next, then invoicing and voice notes. Siri and agent setup is
-          in the repo's docs; the full API is at <a href="/api/docs">/api/docs</a>.
+          Scopes and invoicing arrive next, then voice notes. Siri, agent and iPhone calendar
+          setup are in the repo's docs; the full API is at <a href="/api/docs">/api/docs</a>.
         </p>
       </div>
     </section>
