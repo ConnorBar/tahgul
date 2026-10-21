@@ -46,6 +46,10 @@ class Settings(BaseSettings):
     whisper_model: str = "Systran/faster-whisper-small"
     whisper_language: str | None = None
 
+    # Client report links: the public base URL they're shared under, e.g. the Tailscale
+    # Funnel address https://tahgul.<tailnet>.ts.net:10000. Unset = same as the app.
+    public_report_url: str | None = None
+
     # Where the built web app lives. Empty or missing directory = API only.
     static_dir: Path = Path(__file__).parent / "static"
 

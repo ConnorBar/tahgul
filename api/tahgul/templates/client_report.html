@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>{{ client.name }} · {{ business }}</title>
+<style>
+  {% if pdf %}@page { size: Letter; margin: 0.6in 0.6in 0.75in;
+    @bottom-center { content: "{{ business | e }} · {{ client.name | e }} · page " counter(page) " of " counter(pages); font: 8pt "DejaVu Sans", sans-serif; color: #888; } }{% endif %}
+  :root { --bg: #f6f5f1; --surface: #fff; --text: #1d1f22; --muted: #6a6e74; --line: #e3e1da; --accent: #2f5d50; --warn: #b07a12; --over: #a33a2c; }
+  {% if not pdf %}@media (prefers-color-scheme: dark) { :root { --bg: #16181b; --surface: #1f2226; --text: #e8e6e1; --muted: #9a9ea4; --line: #30343a; --accent: #6fb39c; --warn: #e2b45a; --over: #e0806f; } }{% endif %}
+  * { box-sizing: border-box; }
+  body { margin: 0; background: {% if pdf %}#fff{% else %}var(--bg){% endif %}; color: var(--text);
+         font: {% if pdf %}9.5pt/1.45 "DejaVu Sans", sans-serif{% else %}15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif{% endif %}; }
+  main { max-width: 860px; margin: 0 auto; padding: {% if pdf %}0{% else %}1.5rem 1rem 3rem{% endif %}; }
+  header.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .eyebrow { color: var(--muted); font-size: 0.85em; margin: 0; }
+  h1 { margin: 0.1rem 0 0; font-size: 1.6em; letter-spacing: -0.01em; }
+  h2 { font-size: 1.15em; margin: 0 0 0.6rem; }
+  h3 { font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 1rem 0 0.4rem; }
+  nav.periods { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+  nav.periods a { padding: 0.3rem 0.7rem; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; color: var(--text); font-size: 0.85em; background: var(--surface); }
+  nav.periods a.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 0.9rem; {% if pdf %}page-break-inside: avoid;{% endif %} }
+  .stats { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
+  .stat { flex: 1; min-width: 9rem; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0.8rem 1rem; }
+  .stat b { display: block; font-size: 1.5em; letter-spacing: -0.02em; }
+  .muted { color: var(--muted); }
+  .small { font-size: 0.85em; }
+  .dot { display: inline-block; width: 0.6em; height: 0.6em; border-radius: 50%; margin-right: 0.45em; vertical-align: 0.05em; }
+  .row { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; }
+  .bar { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; margin: 0.25rem 0 0.1rem; {% if pdf %}background: #eee;{% endif %} }
+  .bar > span { display: block; height: 100%; background: var(--accent); }
+  .bar.near > span { background: var(--warn); } .bar.over > span { background: var(--over); }
+  ul { margin: 0; padding-left: 1.1rem; } li { margin: 0.15rem 0; }
+  table { width: 100%; border-collapse: collapse; } td, th { text-align: left; padding: 0.35rem 0.25rem; border-bottom: 1px solid var(--line); font-size: 0.92em; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: 0.75em; text-transform: uppercase; letter-spacing: 0.05em; }
+  .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  table.weeks td { border: 0; padding: 0.15rem 0.25rem; }
+  .wk { width: 4.5em; color: var(--muted); white-space: nowrap; }
+  .wbar { width: 100%; }
+  .hbar { height: 10px; background: var(--bg); border-radius: 3px; overflow: hidden; {% if pdf %}background: #eee;{% endif %} }
+  .hbar > span { display: block; height: 100%; background: var(--accent); min-width: 1px; }
+  .two { display: flex; gap: 1rem; } .two > div { flex: 1; min-width: 0; }
+  @media (max-width: 560px) { .two { display: block; } }
+  footer { color: var(--muted); font-size: 0.8em; margin-top: 1.5rem; display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <div>
+      <p class="eyebrow">{{ business }} · progress report</p>
+      <h1>{{ client.name }}{% if link.project %}: {{ link.project.name }}{% endif %}</h1>
+      <p class="eyebrow">{{ period_label }}: {{ first | d }} – {{ last | d }}</p>
+    </div>
+    {% if not pdf %}
+    <nav class="periods" aria-label="Period">
+      {% for key, label in periods.items() %}<a href="?period={{ key }}" class="{{ 'on' if key == period }}">{{ label }}</a>{% endfor %}
+    </nav>
+    {% endif %}
+  </header>
+
+  <div class="stats">
+    <div class="stat"><span class="muted small">Hours</span><b>{{ total.hours | hrs }}</b></div>
+    {% if link.show_amounts %}
+    <div class="stat"><span class="muted small">Billable work</span><b>{{ total.amount | money(currency) }}</b></div>
+    {% endif %}
+    <div class="stat"><span class="muted small">Projects</span><b>{{ projects | length }}</b></div>
+  </div>
+
+  {% if weeks | length > 1 %}
+  <div class="card">
+    <h2>Hours by week</h2>
+    <table class="weeks">
+      <tbody>
+      {% for w in weeks %}
+      <tr><td class="wk">{{ w.start | dshort }}</td>
+        <td class="wbar"><div class="hbar"><span style="width: {{ (w.hours / peak * 100) | round(1) }}%"></span></div></td>
+        <td class="num">{{ w.hours | hrs }} h</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  {% for p in projects %}
+  <section class="card">
+    <div class="row">
+      <h2><span class="dot" style="background: {{ p.colour }}"></span>{{ p.name }}</h2>
+      <span class="muted small">{{ p.hours | hrs }} h{% if link.show_amounts and p.amount %} · {{ p.amount | money(currency) }}{% endif %}</span>
+    </div>
+
+    {% if p.budget_hours %}
+    {% set pct = [p.used_hours / p.budget_hours * 100, 100] | min %}
+    <div class="small">Project budget: {{ p.used_hours | hrs }} of {{ p.budget_hours | hrs }} h used</div>
+    <div class="bar {{ 'over' if p.used_hours >= p.budget_hours else 'near' if pct >= 80 }}"><span style="width: {{ pct | round(1) }}%"></span></div>
+    {% endif %}
+
+    {% if p.scopes %}
+    <h3>Agreed work</h3>
+    {% for s in p.scopes %}
+    <div class="small row"><span>{{ s.title }}{% if s.status == 'done' %} <span class="muted">· done</span>{% endif %}</span>
+      <span class="muted">{% if s.budget_hours %}{{ s.used_hours | hrs }} of {{ s.budget_hours | hrs }} h{% else %}{{ s.used_hours | hrs }} h{% endif %}{% if link.show_amounts and s.type != 'hourly' and s.fee %} · {{ s.fee | money(currency) }}{{ '/mo' if s.type == 'retainer' }}{% endif %}</span></div>
+    {% if s.pct is not none %}<div class="bar {{ s.warning if s.warning in ('near', 'over') }}"><span style="width: {{ s.pct | round(1) }}%"></span></div>{% endif %}
+    {% endfor %}
+    {% endif %}
+
+    {% if link.show_tasks and (p.done or p.upcoming) %}
+    <div class="two">
+      <div>
+        <h3>Finished</h3>
+        {% if p.done %}<ul class="small">{% for t in p.done %}<li>{{ t.title }} <span class="muted">· {{ t.when | dshort }}</span></li>{% endfor %}</ul>
+        {% else %}<p class="muted small">Nothing finished in this period.</p>{% endif %}
+      </div>
+      <div>
+        <h3>Coming up</h3>
+        {% if p.upcoming %}<ul class="small">{% for t in p.upcoming %}<li>{{ t.title }} <span class="muted">· {{ t.status }}{% if t.due %}, due {{ t.due | dshort }}{% endif %}</span></li>{% endfor %}</ul>
+        {% else %}<p class="muted small">Nothing open.</p>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+
+    {% if link.show_notes and p.entries %}
+    <h3>Work log</h3>
+    <table class="small"><tbody>
+      {% for e in p.entries %}<tr><td style="width: 6.5em">{{ e.date | dshort }}</td><td>{{ e.notes }}</td><td class="num">{{ e.hours | hrs }} h</td></tr>{% endfor %}
+    </tbody></table>
+    {% endif %}
+  </section>
+  {% else %}
+  <div class="card muted">No work to show for this period.</div>
+  {% endfor %}
+
+  {% if link.show_amounts and invoices %}
+  <section class="card">
+    <h2>Invoices</h2>
+    <table>
+      <thead><tr><th>Number</th><th>Issued</th><th>Due</th><th class="num">Total</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for i in invoices %}<tr><td>{{ i.number }}</td><td>{{ i.issue_date | dshort }}</td><td>{{ i.due_date | dshort }}</td>
+        <td class="num">{{ i.total | money(i.currency) }}</td><td>{{ 'Paid' if i.status == 'paid' else 'Open' }}</td></tr>{% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
+
+  <footer>
+    <span>Prepared by {{ business }}{% if ws.business_email %} · {{ ws.business_email }}{% endif %}. Updated {{ generated | d }}.</span>
+    {% if not pdf %}<a href="{{ link_base }}/pdf?period={{ period }}">Download PDF</a>{% endif %}
+  </footer>
+</main>
+</body>
+</html>

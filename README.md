@@ -63,7 +63,7 @@ api/      FastAPI app (tahgul/), Alembic migrations
 web/      React + TypeScript + Vite, built into the API image
 mcp/      tahgul-mcp server (MCP tools over the REST API)
 deploy/   docker-compose.yml, Radicale image, Tailscale serve config, entrypoint, backup/restore
-docs/     SPEC.md, decisions.md, siri-shortcuts.md, agent.md, calendar.md, invoicing.md, voice-notes.md, webhooks.md, operations.md
+docs/     SPEC.md, decisions.md, siri-shortcuts.md, agent.md, calendar.md, invoicing.md, voice-notes.md, webhooks.md, client-reports.md, operations.md
 tests/    pytest; tests/smoke: Playwright against a running stack
 ```
 
@@ -109,6 +109,10 @@ Scopes (hourly, fixed fee, monthly retainer) track burn against a budget and fla
 ## Ideas and voice notes
 
 An ideas inbox (ideas are projects in status `idea`) with voice notes: Yog, Shortcuts or `curl` upload audio to an idea, project or task; the web app plays it back with seeking and 1.5×/2×, and records in the browser. Optional local Whisper transcription (`--profile whisper`). See [docs/voice-notes.md](docs/voice-notes.md).
+
+## Client reports
+
+Read-only progress pages per client (hours by week, budgets, tasks; money and work log optional) with expiring links and a PDF. They can optionally be published to the internet through a separate report-only container on Tailscale Funnel while the app stays private. See [docs/client-reports.md](docs/client-reports.md).
 
 ## Rates
 

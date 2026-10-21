@@ -19,7 +19,9 @@ from tahgul.routes import (
     ideas,
     invoices,
     projects,
+    public_reports,
     quick,
+    report_links,
     reports,
     scopes,
     system,
@@ -146,6 +148,8 @@ def create_app() -> FastAPI:
     app.include_router(invoices.router)
     app.include_router(voice_notes.router)
     app.include_router(webhooks.router)
+    app.include_router(report_links.router)
+    app.include_router(public_reports.router)
     _mount_web(app)
     return app
 
