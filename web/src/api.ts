@@ -28,6 +28,9 @@ export const post = <T = unknown>(path: string, data?: unknown) =>
 export const patch = <T = unknown>(path: string, data: unknown) =>
   api<T>(path, { method: "PATCH", body: JSON.stringify(data) });
 
+export const put = <T = unknown>(path: string, data: unknown) =>
+  api<T>(path, { method: "PUT", body: JSON.stringify(data) });
+
 export const del = <T = unknown>(path: string) => api<T>(path, { method: "DELETE" });
 
 export type Me = {
@@ -60,6 +63,9 @@ export type Workspace = {
   payment_terms_days: number;
   invoice_number_pattern: string;
   timezone: string;
+  rounding_minutes: number;
+  rounding_mode: "up" | "nearest" | "down";
+  timer_warning_minutes: number;
 };
 
 export type Client = {
@@ -123,6 +129,13 @@ const MESSAGES: Record<string, string> = {
   workspace_not_empty: "This workspace still has clients, projects or activities.",
   workspace_required: "Pick a workspace first.",
   client_in_other_workspace: "That client belongs to another workspace.",
+  end_before_start: "The end has to be after the start.",
+  entry_too_long: "An entry can't be longer than a week.",
+  entry_invoiced: "This time is on an invoice, so it's locked.",
+  start_in_future: "The start can't be in the future.",
+  no_timer_running: "No timer is running.",
+  cannot_shrink_tracked_time:
+    "That would cut into timer entries. Edit those entries directly instead.",
 };
 
 export function errorMessage(err: unknown): string {
@@ -135,3 +148,88 @@ export function errorMessage(err: unknown): string {
   }
   return "Something went wrong. Check the connection and try again.";
 }
+
+export type TimeEntry = {
+  id: string;
+  workspace_id: string;
+  project_id: string | null;
+  project_name: string | null;
+  client_id: string | null;
+  client_name: string | null;
+  activity_id: string | null;
+  activity_name: string | null;
+  start_at: string;
+  end_at: string | null;
+  duration_seconds: number;
+  hours: string;
+  notes: string | null;
+  billable: boolean;
+  rate_override: string | null;
+  rate: string | null;
+  rate_source: string | null;
+  amount: string | null;
+  source: string;
+  invoice_id: string | null;
+  running: boolean;
+  overlaps: string[] | null;
+};
+
+export type Timer = {
+  running: TimeEntry | null;
+  elapsed_seconds: number;
+  long_running: boolean;
+  warning_after_minutes: number | null;
+  stopped: TimeEntry | null;
+};
+
+export type WeekRow = {
+  project_id: string | null;
+  project_name: string | null;
+  client_name: string | null;
+  colour: string | null;
+  activity_id: string | null;
+  activity_name: string | null;
+  hours: string[];
+  total: string;
+};
+
+export type Week = {
+  workspace_id: string;
+  week_start: string;
+  days: string[];
+  rows: WeekRow[];
+  day_totals: string[];
+  total: string;
+  running_entry_id: string | null;
+};
+
+export type Totals = {
+  hours: string;
+  billable_hours: string;
+  amount: string;
+  unbilled_amount: string;
+  effective_rate: string | null;
+};
+
+export type Summary = {
+  workspace_id: string;
+  currency: string;
+  from: string;
+  to: string;
+  totals: Totals;
+  by_client: (Totals & { client_id: string | null; name: string })[];
+  by_project: (Totals & {
+    project_id: string | null;
+    name: string;
+    client_name: string | null;
+    colour: string | null;
+    budget_hours: string | null;
+    budget_amount: string | null;
+    used_hours_all_time: string;
+    used_amount_all_time: string;
+    budget_hours_left: string | null;
+    budget_amount_left: string | null;
+  })[];
+  by_week: (Totals & { week_start: string })[];
+  entry_count: number;
+};

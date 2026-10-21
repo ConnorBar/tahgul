@@ -1,10 +1,10 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String
+from sqlalchemy import JSON, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from tahgul.models.base import Base, RecordMixin
+from tahgul.models.base import Base, RecordMixin, UTCDateTime
 
 
 class User(RecordMixin, Base):
@@ -30,8 +30,8 @@ class UserSession(RecordMixin, Base):
 
     user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
-    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    expires_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    last_seen_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     user_agent: Mapped[str | None] = mapped_column(String(500))
 
     user: Mapped[User] = relationship(back_populates="sessions")
@@ -46,8 +46,8 @@ class ApiToken(RecordMixin, Base):
     prefix: Mapped[str] = mapped_column(String(16), unique=True, nullable=False)
     token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     scopes: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_used_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+    revoked_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
 
 class LoginAttempt(RecordMixin, Base):

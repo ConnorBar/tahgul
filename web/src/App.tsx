@@ -4,8 +4,11 @@ import { ApiError, api, post, type Me } from "./api";
 import Clients from "./pages/Clients";
 import Login from "./pages/Login";
 import Projects from "./pages/Projects";
+import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Time from "./pages/Time";
 import Today from "./pages/Today";
+import { LongTimerPrompt, TimerBar } from "./timer";
 import { WorkspaceProvider, useWorkspace } from "./workspace";
 
 export default function App() {
@@ -53,22 +56,28 @@ function Shell({ me }: { me: Me }) {
       <header className="topbar">
         <span className="brand">Tahgul</span>
         <WorkspaceSwitcher />
-        {/* The running-timer bar lands here in milestone 3. */}
-        <div className="timer-slot" aria-hidden="true" />
+        <div className="timer-slot">
+          <TimerBar />
+        </div>
         <nav>
           <NavLink to="/" end>Today</NavLink>
+          <NavLink to="/time">Time</NavLink>
           <NavLink to="/projects">Projects</NavLink>
           <NavLink to="/clients">Clients</NavLink>
+          <NavLink to="/reports">Reports</NavLink>
           <NavLink to="/settings">Settings</NavLink>
         </nav>
         <button className="ghost" onClick={() => logout.mutate()} disabled={logout.isPending}>
           Sign out
         </button>
       </header>
+      <LongTimerPrompt />
       <main>
         <Routes>
           <Route path="/" element={<Today me={me} />} />
+          <Route path="/time" element={<Time />} />
           <Route path="/projects" element={<Projects />} />
+          <Route path="/reports" element={<Reports />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/settings/*" element={<Settings me={me} />} />
           <Route path="*" element={<Navigate to="/" replace />} />

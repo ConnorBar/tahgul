@@ -33,6 +33,15 @@ class Workspace(RecordMixin, Base):
         String(50), nullable=False, default=DEFAULT_INVOICE_PATTERN
     )
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="America/Chicago")
+    # Rounding is applied when invoicing, never to the raw entries (SPEC: time tracking).
+    rounding_minutes: Mapped[int] = mapped_column(nullable=False, default=0, server_default="0")
+    rounding_mode: Mapped[str] = mapped_column(
+        String(10), nullable=False, default="up", server_default="up"
+    )
+    # A running timer older than this asks whether to trim or keep it.
+    timer_warning_minutes: Mapped[int] = mapped_column(
+        nullable=False, default=240, server_default="240"
+    )
 
 
 class Client(RecordMixin, Base):

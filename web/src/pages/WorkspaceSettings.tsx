@@ -70,6 +70,9 @@ function WorkspaceForm({ ws }: { ws: Workspace }) {
     tax_rate: str(ws.tax_rate),
     pattern: ws.invoice_number_pattern,
     custom: "",
+    rounding_minutes: String(ws.rounding_minutes),
+    rounding_mode: ws.rounding_mode,
+    timer_warning_hours: String(ws.timer_warning_minutes / 60),
   });
   const [choice, setChoice] = useState<string>(ws.invoice_number_pattern);
   useEffect(() => {
@@ -97,6 +100,9 @@ function WorkspaceForm({ ws }: { ws: Workspace }) {
         timezone: f.timezone,
         tax_rate: f.tax_on ? orNull(f.tax_rate) : null,
         invoice_number_pattern: pattern,
+        rounding_minutes: Number(f.rounding_minutes),
+        rounding_mode: f.rounding_mode,
+        timer_warning_minutes: Math.round(Number(f.timer_warning_hours) * 60),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["workspaces"] });
@@ -140,6 +146,39 @@ function WorkspaceForm({ ws }: { ws: Workspace }) {
           </datalist>
         </label>
       </div>
+
+      <fieldset>
+        <legend>Time</legend>
+        <div className="grid-3">
+          <label>
+            Round billed time to
+            <select aria-label="Round billed time to" value={f.rounding_minutes}
+              onChange={set("rounding_minutes")}>
+              <option value="0">No rounding</option>
+              {[1, 5, 6, 10, 15, 30, 60].map((m) => (
+                <option key={m} value={m}>{m} minutes</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Rounding
+            <select aria-label="Rounding" value={f.rounding_mode} onChange={set("rounding_mode")}
+              disabled={f.rounding_minutes === "0"}>
+              <option value="up">Up</option>
+              <option value="nearest">Nearest</option>
+              <option value="down">Down</option>
+            </select>
+          </label>
+          <label>
+            Warn after timer runs (h)
+            <input inputMode="decimal" value={f.timer_warning_hours}
+              onChange={set("timer_warning_hours")} required />
+          </label>
+        </div>
+        <p className="muted small">
+          Rounding applies on invoices only; logged time is always kept exact.
+        </p>
+      </fieldset>
 
       <fieldset>
         <legend>Tax</legend>
@@ -204,7 +243,38 @@ function WorkspaceForm({ ws }: { ws: Workspace }) {
       {save.isError && <p className="error">{errorMessage(save.error)}</p>}
       {save.isSuccess && !save.isPending && <p className="ok">Saved.</p>}
       <button type="submit" disabled={save.isPending}>Save workspace</button>
+      <Reprice ws={ws} />
     </form>
+  );
+}
+
+/** Rates are frozen on entries; this applies today's rates to work not yet invoiced. */
+function Reprice({ ws }: { ws: Workspace }) {
+  const qc = useQueryClient();
+  const run = useMutation({
+    mutationFn: () =>
+      post<{ checked: number; changed: number }>("/time-entries/reprice", { workspace_id: ws.id }),
+    onSuccess: () => {
+      ["entries", "summary", "timesheet"].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+    },
+  });
+  return (
+    <div className="reprice">
+      <p className="muted small">
+        Each time entry keeps the rate it was logged at. After changing rates you can re-price
+        everything not yet invoiced.
+      </p>
+      <button type="button" className="ghost" disabled={run.isPending}
+        onClick={() => confirm("Re-price all uninvoiced time at today's rates?") && run.mutate()}>
+        Re-price unbilled time
+      </button>
+      {run.data && (
+        <p className="ok small">
+          Checked {run.data.checked} entries, updated {run.data.changed}.
+        </p>
+      )}
+      {run.isError && <p className="error small">{errorMessage(run.error)}</p>}
+    </div>
   );
 }
 
