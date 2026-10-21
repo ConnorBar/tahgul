@@ -54,6 +54,7 @@ services:
       TAHGUL_RADICALE_PASSWORD: ${RADICALE_PASSWORD}
       # Transcription: start the stack with --profile whisper and set this to
       # http://whisper:8000 in deploy/.env (or point it at any OpenAI-compatible server).
+      TAHGUL_PUBLIC_REPORT_URL: ${TAHGUL_PUBLIC_REPORT_URL:-}
       TAHGUL_WHISPER_URL: ${TAHGUL_WHISPER_URL:-}
       TAHGUL_WHISPER_MODEL: ${TAHGUL_WHISPER_MODEL:-Systran/faster-whisper-small}
       TAHGUL_WHISPER_LANGUAGE: ${TAHGUL_WHISPER_LANGUAGE:-}
@@ -66,6 +67,28 @@ services:
     volumes:
       # Invoice PDFs and voice notes. Back this up along with the database.
       - tahgul-data:/data
+
+  # Client report links for the public internet: a separate tiny app that serves
+  # /r/<token> pages and nothing else (no login, no API). Only started with
+  #   docker compose --profile public-reports up -d
+  reports:
+    profiles: ["public-reports"]
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: []
+    command: ["uvicorn", "tahgul.public:app", "--host", "0.0.0.0", "--port", "8001", "--proxy-headers", "--forwarded-allow-ips", "*"]
+    environment:
+      TAHGUL_DATABASE_URL: postgresql+psycopg://tahgul:${POSTGRES_PASSWORD}@db:5432/tahgul
+      TAHGUL_SCHEDULER_ENABLED: "false"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/healthz')"]
+      interval: 30s
+      timeout: 5s
 
   # Local speech-to-text (faster-whisper behind an OpenAI-compatible API). Optional:
   #   docker compose --profile whisper up -d
@@ -89,7 +112,9 @@ services:
       TS_USERSPACE: "true"
     volumes:
       - ts-state:/var/lib/tailscale
-      - ./tailscale/serve.json:/config/serve.json:ro
+      # serve-public-reports.json also opens client report links (only) to the internet
+      # on port 10000 with Tailscale Funnel. See docs/client-reports.md.
+      - ./tailscale/${TS_SERVE_FILE:-serve.json}:/config/serve.json:ro
     depends_on:
       - api
       - radicale

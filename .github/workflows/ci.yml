@@ -104,6 +104,24 @@ jobs:
           pip install -e "api[dev]" playwright
           python -m playwright install --with-deps chromium
           pytest tests/smoke -p no:warnings
+      - name: Public reports container serves reports only
+        env:
+          POSTGRES_PASSWORD: ci-password
+          TAHGUL_SECRET_KEY: ci-secret-key-long-enough-for-fernet
+          RADICALE_USER: ci
+          RADICALE_PASSWORD: ci-calendar-password
+        run: |
+          docker compose -f deploy/docker-compose.yml --profile public-reports up -d --build --wait reports
+          docker compose -f deploy/docker-compose.yml exec -T reports python -c "
+          import urllib.request as u, urllib.error as e
+          assert u.urlopen('http://127.0.0.1:8001/healthz').read() == b'ok'
+          for p in ['/', '/api/v1/health', '/api/docs', '/r/not-a-token']:
+              try:
+                  u.urlopen('http://127.0.0.1:8001' + p)
+                  raise SystemExit(p + ' should be 404')
+              except e.HTTPError as x:
+                  assert x.code == 404, (p, x.code)
+          print('reports container ok')"
       - name: Backup, change, restore
         env:
           POSTGRES_PASSWORD: ci-password

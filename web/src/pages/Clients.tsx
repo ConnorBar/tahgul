@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { api, del, errorMessage, patch, post, type Client } from "../api";
 import { Dialog, Empty, intOrNull, money, orNull, str } from "../ui";
 import { useWorkspace } from "../workspace";
+import { ReportLinks } from "../reportLinks";
 
 export default function Clients() {
   const { current: ws } = useWorkspace();
@@ -12,6 +13,7 @@ export default function Clients() {
     queryFn: () => api<Client[]>(`/clients?workspace_id=${ws.id}`),
   });
   const [editing, setEditing] = useState<Client | "new" | null>(null);
+  const [sharing, setSharing] = useState<Client | null>(null);
 
   return (
     <section className="page wide">
@@ -35,6 +37,7 @@ export default function Clients() {
                   <th className="num">Rate</th>
                   <th className="num">Terms</th>
                   <th className="num">Projects</th>
+                  <th aria-label="Share" />
                 </tr>
               </thead>
               <tbody>
@@ -59,6 +62,11 @@ export default function Clients() {
                         {c.project_count}
                       </Link>
                     </td>
+                    <td className="right">
+                      <button className="ghost small" onClick={(e) => { e.stopPropagation(); setSharing(c); }}>
+                        Share report
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -66,6 +74,11 @@ export default function Clients() {
           </div>
         </div>
       )}
+
+      <Dialog open={sharing !== null} title={sharing ? `Report links · ${sharing.name}` : "Report links"}
+        onClose={() => setSharing(null)}>
+        {sharing && <ReportLinks client={sharing} />}
+      </Dialog>
 
       <Dialog
         open={editing !== null}

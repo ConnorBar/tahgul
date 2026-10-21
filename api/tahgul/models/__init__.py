@@ -5,6 +5,7 @@ from tahgul.models.base import Base
 from tahgul.models.billing import Invoice, InvoiceLine, InvoiceSequence, Scope
 from tahgul.models.calendar import Calendar, CalendarAccount, CalendarEvent
 from tahgul.models.idempotency import IdempotencyKey
+from tahgul.models.sharing import ReportLink
 from tahgul.models.tasks import BoardColumn, Comment, SavedView, Task, TaskLink
 from tahgul.models.time import TimeEntry
 from tahgul.models.webhooks import Webhook, WebhookDelivery
@@ -27,6 +28,7 @@ __all__ = [
     "InvoiceSequence",
     "LoginAttempt",
     "Project",
+    "ReportLink",
     "SavedView",
     "Scope",
     "Task",
