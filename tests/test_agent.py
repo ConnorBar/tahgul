@@ -174,7 +174,7 @@ def test_quick_timer_flow(agent):
     r = quick(bot, "start timer for acme")
     assert r["action"] == "timer_started" and r["speech"] == "Timer started for Network audit."
     r = quick(bot, "what's running")
-    assert r["action"] == "status" and "Network audit" in r["speech"]
+    assert r["action"] == "status" and r["speech"] == "Less than a minute on Network audit."
     r = quick(bot, "start working on yield dashboard")
     assert r["speech"] == "Timer started for Yield dashboard. Stopped Network audit first."
     r = quick(bot, "Stop the timer")

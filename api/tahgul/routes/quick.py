@@ -122,6 +122,10 @@ def _hours_words(seconds: int) -> str:
     return " ".join(parts)
 
 
+def _cap(s: str) -> str:
+    return s[:1].upper() + s[1:]
+
+
 def _day_words(d: date, today: date) -> str:
     if d == today:
         return "today"
