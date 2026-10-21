@@ -63,7 +63,7 @@ api/      FastAPI app (tahgul/), Alembic migrations
 web/      React + TypeScript + Vite, built into the API image
 mcp/      tahgul-mcp server (MCP tools over the REST API)
 deploy/   docker-compose.yml, Radicale image, Tailscale serve config, entrypoint, backup/restore
-docs/     SPEC.md, decisions.md, siri-shortcuts.md, agent.md, calendar.md, invoicing.md, voice-notes.md, operations.md
+docs/     SPEC.md, decisions.md, siri-shortcuts.md, agent.md, calendar.md, invoicing.md, voice-notes.md, webhooks.md, operations.md
 tests/    pytest; tests/smoke: Playwright against a running stack
 ```
 
@@ -96,6 +96,7 @@ tests/    pytest; tests/smoke: Playwright against a running stack
 - Every write accepts an `Idempotency-Key` header. A retry with the same key gets the first response back (`Idempotent-Replayed: true`), so a repeated voice command never makes two tasks.
 - Projects, clients and activities can be named instead of passed by id (`"project": "acme"`). Anything fuzzy or ambiguous returns `409 needs_confirmation` with candidates instead of a guess.
 - `tahgul-mcp` (in `mcp/`) gives a local model the same powers as MCP tools; see [docs/agent.md](docs/agent.md).
+- Webhooks tell the agent when things happen (`timer.stopped`, `task.due_soon`, `calendar.event_ended`, …), signed and retried; see [docs/webhooks.md](docs/webhooks.md).
 
 ## Calendar
 

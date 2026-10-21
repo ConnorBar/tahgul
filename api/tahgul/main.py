@@ -28,6 +28,7 @@ from tahgul.routes import (
     timesheet,
     tokens,
     voice_notes,
+    webhooks,
     workspaces,
 )
 
@@ -74,6 +75,22 @@ async def lifespan(app: FastAPI):
             coalesce=True,
             next_run_time=datetime.now(UTC) + timedelta(seconds=20),
         )
+        import threading
+
+        from tahgul import webhooks as wh
+
+        scheduler.add_job(
+            wh.sweep,
+            "interval",
+            minutes=1,
+            max_instances=1,
+            coalesce=True,
+            next_run_time=datetime.now(UTC) + timedelta(seconds=15),
+        )
+        stop_dispatch = threading.Event()
+        threading.Thread(
+            target=wh.dispatch_forever, args=(stop_dispatch,), daemon=True, name="webhooks"
+        ).start()
         if s.whisper_url:
             from tahgul import transcribe
 
@@ -89,9 +106,15 @@ async def lifespan(app: FastAPI):
     yield
     if scheduler is not None:
         scheduler.shutdown(wait=False)
+        stop_dispatch.set()
+        from tahgul import webhooks as wh
+
+        wh._wake.set()
 
 
 def create_app() -> FastAPI:
+    import tahgul.webhooks  # noqa: F401 - registers the change listeners
+
     app = FastAPI(
         title="Tahgul API",
         version=__version__,
@@ -122,6 +145,7 @@ def create_app() -> FastAPI:
     app.include_router(scopes.router)
     app.include_router(invoices.router)
     app.include_router(voice_notes.router)
+    app.include_router(webhooks.router)
     _mount_web(app)
     return app
 

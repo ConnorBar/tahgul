@@ -54,3 +54,7 @@ Pair it with a local model that handles tool calls well (via Ollama or llama.cpp
 ## Siri through the agent (later)
 
 Today the Siri Shortcuts call `/quick` directly (see [siri-shortcuts.md](siri-shortcuts.md)). Later the same Shortcut can send the dictated text to the agent instead, which picks the right tool, without changing anything on Tahgul's side.
+
+## Reacting to events
+
+To have the agent act when something happens (a meeting ends, a task comes due, the timer has run for hours), point a webhook at it: see [webhooks.md](webhooks.md).

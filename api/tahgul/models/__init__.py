@@ -7,6 +7,7 @@ from tahgul.models.calendar import Calendar, CalendarAccount, CalendarEvent
 from tahgul.models.idempotency import IdempotencyKey
 from tahgul.models.tasks import BoardColumn, Comment, SavedView, Task, TaskLink
 from tahgul.models.time import TimeEntry
+from tahgul.models.webhooks import Webhook, WebhookDelivery
 from tahgul.models.work import Activity, Client, Project, Workspace
 
 __all__ = [
@@ -34,5 +35,7 @@ __all__ = [
     "User",
     "UserSession",
     "VoiceNote",
+    "Webhook",
+    "WebhookDelivery",
     "Workspace",
 ]
