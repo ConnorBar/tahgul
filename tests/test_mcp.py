@@ -58,6 +58,7 @@ def test_tools_are_listed(mcp):
         "capture_idea",
         "unbilled_work",
         "voice_notes",
+        "budget_left",
         "draft_invoice",
         "create_event",
         "list_events",
@@ -161,3 +162,24 @@ def test_voice_notes_tool(mcp, logged_in):
     found = call(mcp, "voice_notes", project="Drone surveys")
     assert found["count"] == 1 and found["notes"][0]["transcript"].startswith("Call the FAA")
     assert call(mcp, "voice_notes", query="faa")["count"] == 1
+
+
+def test_budget_left(mcp, logged_in):
+    c = logged_in
+    p = c.get(f"{API}/projects", params={"q": "Network audit"}).json()[0]
+    sc = c.post(
+        f"{API}/projects/{p['id']}/scopes", json={"title": "Phase 1", "budget_hours": "10"}
+    ).json()
+    c.post(
+        f"{API}/time-entries",
+        json={
+            "project_id": p["id"],
+            "scope_id": sc["id"],
+            "start_at": "2026-10-12T09:00:00",
+            "duration_minutes": 510,
+        },
+    )
+    r = call(mcp, "budget_left", project="network audit")
+    s = r["scopes"][0]
+    assert s["hours_used"] == "8.50" and s["hours_left"] == "1.50" and s["warning"] == "near"
+    assert r["scope_creep"] is False

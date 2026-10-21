@@ -16,6 +16,7 @@
 | `create_event` / `list_events` | The calendar (events land on the phone right away) |
 | `events_to_log` / `log_event_as_time` | "Log this meeting as time?" |
 | `capture_idea` | Save to the ideas inbox |
+| `budget_left` | "What's left on the Acme audit?": project and scope budgets used, and work outside scope |
 | `voice_notes` | Read voice notes and transcripts on an idea or project, or search them ("pull the to-dos out of this idea") |
 | `unbilled_work` / `draft_invoice` | "Who should I bill?" and "draft an invoice for Acme". Only with a token that also has the **invoice** scope; drafts are never issued by the agent |
 
