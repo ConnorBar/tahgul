@@ -26,13 +26,14 @@ from tahgul.db import get_db
 from tahgul.deps import require_scope
 from tahgul.models import Activity, Project, Task, TimeEntry, Workspace
 from tahgul.principal import Principal
+from tahgul.routes.scopes import check_scope
 from tahgul.timeutil import as_utc, utcnow
 
 router = APIRouter(prefix="/api/v1", tags=["time"])
 
 RATE_FIELDS = {"rate_override"}
 # Changing any of these re-resolves the frozen rate and amount.
-PRICING_FIELDS = {"project_id", "activity_id", "rate_override", "start_at", "end_at"}
+PRICING_FIELDS = {"project_id", "activity_id", "scope_id", "rate_override", "start_at", "end_at"}
 
 
 # --- Schemas -------------------------------------------------------------------------
@@ -49,6 +50,8 @@ class TimeEntryOut(BaseModel):
     client_name: str | None = None
     activity_id: uuid.UUID | None
     activity_name: str | None = None
+    scope_id: uuid.UUID | None = None
+    scope_title: str | None = None
     task_id: uuid.UUID | None
     task_ref: str | None = None
     task_title: str | None = None
@@ -78,6 +81,7 @@ class EntryFields(BaseModel):
     project: str | None = Field(None, description="Project (or client) name, instead of an id")
     activity_id: uuid.UUID | None = None
     activity: str | None = Field(None, description="Activity name, instead of an id")
+    scope_id: uuid.UUID | None = Field(None, description="Default: the task's scope")
     notes: str | None = Field(None, max_length=5000)
     billable: bool | None = Field(None, description="Defaults to the activity's setting.")
     rate_override: RateIn | None = None
@@ -141,6 +145,7 @@ def _q():
         selectinload(TimeEntry.workspace),
         selectinload(TimeEntry.activity),
         selectinload(TimeEntry.task),
+        selectinload(TimeEntry.scope),
         selectinload(TimeEntry.project).selectinload(Project.client),
         selectinload(TimeEntry.project).selectinload(Project.workspace),
     )
@@ -173,6 +178,8 @@ def out(e: TimeEntry, overlaps: list[TimeEntry] | None = None) -> TimeEntryOut:
     o.activity_name = e.activity.name if e.activity else None
     if e.task is not None:
         o.task_ref, o.task_title = f"#{e.task.number}", e.task.title
+    if e.scope is not None:
+        o.scope_title = e.scope.title
     if overlaps is not None:
         o.overlaps = [x.id for x in overlaps]
     return o
@@ -285,11 +292,15 @@ def start_timer(
         audit.record(db, principal, "stop", "time_entry", stopped.id)
         db.flush()
 
+    scope = check_scope(
+        db, body.scope_id or (task.scope_id if task else None), project.id if project else None
+    )
     e = TimeEntry(
         workspace=ws,
         project=project,
         activity=activity,
         task=task,
+        scope=scope,
         start_at=start,
         notes=body.notes if body.notes is not None else (task.title if task else None),
         billable=body.billable if body.billable is not None else _billable(activity),
@@ -423,11 +434,15 @@ def create_entry(
         else start + timedelta(minutes=body.duration_minutes)
     )
     _check_span(start, end)
+    scope = check_scope(
+        db, body.scope_id or (task.scope_id if task else None), project.id if project else None
+    )
     e = TimeEntry(
         workspace=ws,
         project=project,
         activity=activity,
         task=task,
+        scope=scope,
         start_at=start,
         notes=body.notes,
         billable=body.billable if body.billable is not None else _billable(activity),
@@ -461,7 +476,9 @@ def get_entry(
 
 
 def _apply_patch(db: Session, e: TimeEntry, body: BaseModel, principal: Principal) -> TimeEntry:
-    data = patch_data(body, {"task_id", "project_id", "activity_id", "notes", "rate_override"})
+    data = patch_data(
+        body, {"task_id", "project_id", "activity_id", "scope_id", "notes", "rate_override"}
+    )
     guard_rate_fields(principal, data, RATE_FIELDS)
     if data.get("project") and "project_id" not in data:
         data["project_id"] = lookup.find_project(db, e.workspace_id, data["project"]).id
@@ -482,6 +499,15 @@ def _apply_patch(db: Session, e: TimeEntry, body: BaseModel, principal: Principa
         data.get("project_id", e.project_id),
         data.get("activity_id", e.activity_id),
     )
+    new_project_id = data.get("project_id", e.project_id)
+    scope = None
+    if "scope_id" in data:
+        scope = check_scope(db, data["scope_id"], new_project_id)
+    elif "project_id" in data and e.scope_id and e.scope and e.scope.project_id != new_project_id:
+        data["scope_id"] = None  # moved off the scope's project
+    elif data.get("task_id") and task is not None and task.scope_id and not e.scope_id:
+        data["scope_id"] = task.scope_id
+        scope = check_scope(db, task.scope_id, new_project_id)
     zone = tk.tz(e.workspace)
     for k in ("start_at", "end_at"):
         if k in data:
@@ -502,6 +528,8 @@ def _apply_patch(db: Session, e: TimeEntry, body: BaseModel, principal: Principa
         e.activity = activity
     if "task_id" in data:
         e.task = task
+    if "scope_id" in data:
+        e.scope = scope
     if not e.running and ({"start_at", "end_at"} & changes.keys()):
         tk.close(e, e.end_at)
     if PRICING_FIELDS & changes.keys():

@@ -27,6 +27,7 @@ import {
   zoned,
 } from "../ui";
 import { useWorkspace } from "../workspace";
+import { ScopeSelect } from "../scopes";
 
 type RowKey = { project_id: string | null; activity_id: string | null };
 const keyOf = (r: RowKey) => `${r.project_id ?? ""}|${r.activity_id ?? ""}`;
@@ -291,6 +292,8 @@ function Entries({ week }: { week: Week }) {
                     <strong>{e.project_name ?? "No project"}</strong>
                     {e.client_name && <span className="muted"> · {e.client_name}</span>}
                     {e.activity_name && <span className="tag">{e.activity_name}</span>}
+                    {e.scope_title && <span className="tag">{e.scope_title}</span>}
+                    {e.invoice_id && <span className="tag" title="On an invoice">INVOICED</span>}
                     {e.notes && <span className="entry-notes muted">{e.notes}</span>}
                   </span>
                   <span className="entry-amount">
@@ -338,6 +341,7 @@ export function EntryForm({
     end: end.time,
     project_id: entry?.project_id ?? "",
     activity_id: entry?.activity_id ?? "",
+    scope_id: entry?.scope_id ?? "",
     notes: entry?.notes ?? "",
     billable: entry?.billable ?? true,
   });
@@ -352,6 +356,7 @@ export function EntryForm({
     end_at: `${endDate}T${f.end}:00`,
     project_id: f.project_id || null,
     activity_id: f.activity_id || null,
+    scope_id: f.scope_id || null,
     notes: f.notes.trim() || null,
     billable: f.billable,
   });
@@ -415,7 +420,7 @@ export function EntryForm({
         <label>
           Project
           <ProjectSelect value={f.project_id}
-            onChange={(id) => setF((c) => ({ ...c, project_id: id }))} includeDone />
+            onChange={(id) => setF((c) => ({ ...c, project_id: id, scope_id: "" }))} includeDone />
         </label>
         <label>
           Activity
@@ -428,6 +433,8 @@ export function EntryForm({
           </select>
         </label>
       </div>
+      <ScopeSelect projectId={f.project_id} value={f.scope_id}
+        onChange={(id) => setF((c) => ({ ...c, scope_id: id }))} />
       <label>
         Notes
         <textarea rows={2} value={f.notes} onChange={set("notes")} />

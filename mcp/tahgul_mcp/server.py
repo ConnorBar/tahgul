@@ -26,9 +26,10 @@ WRITE = ToolAnnotations(readOnlyHint=False, destructiveHint=False, openWorldHint
 
 INSTRUCTIONS = """\
 Tools for Tahgul, a solo consultant's ops app: tasks on project boards, a running timer,
-logged time, calendar events, ideas and reports. Projects and clients can be named in plain words
-("Acme", "network audit"). If a result has needs_confirmation, ask the person which
-candidate they meant and call again with that exact name; never pick one yourself.
+logged time, calendar events, ideas, reports and invoice drafts. Projects and clients can
+be named in plain words ("Acme", "network audit"). If a result has needs_confirmation,
+ask the person which candidate they meant and call again with that exact name; never
+pick one yourself.
 For anything said in one sentence ("log 2 hours on Acme yesterday afternoon") the
 `quick` tool is usually simplest. Deleting things and changing rates aren't available here.
 """
@@ -386,6 +387,54 @@ def build_server(api: TahgulAPI) -> MCPServer:
         """Save an idea to the ideas inbox (an idea project that can grow into real work)."""
         r = api.call("POST", "/ideas", json={"title": title, "description": description})
         return {"id": r["id"], "name": r["name"], "status": r["status"]} if "id" in r else r
+
+    @mcp.tool(annotations=READ)
+    def unbilled_work() -> dict:
+        """Billable time not yet invoiced, per client: "who should I bill?"."""
+        r = api.call("GET", "/invoices/unbilled")
+        if isinstance(r, dict):
+            return r
+        return {"count": len(r), "clients": r}
+
+    @mcp.tool(annotations=WRITE)
+    def draft_invoice(
+        client: str,
+        period_start: date | None = None,
+        period_end: date | None = None,
+        group_by: Literal["project", "activity", "scope", "day", "entry"] = "project",
+    ) -> dict:
+        """Draft an invoice for a client from their unbilled time (default: everything up to
+        today). Needs a token with the invoice scope. It stays a draft: the person reviews
+        and issues it in the app."""
+        r = api.call(
+            "POST",
+            "/invoices",
+            json={
+                "client": client,
+                "period_start": period_start and period_start.isoformat(),
+                "period_end": period_end and period_end.isoformat(),
+                "group_by": group_by,
+            },
+        )
+        if "id" not in r:
+            return r
+        return {
+            "id": r["id"],
+            "client": r["client_name"],
+            "period": [r["period_start"], r["period_end"]],
+            "lines": [
+                {
+                    "description": ln["description"],
+                    "quantity": ln["quantity"],
+                    "amount": ln["amount"],
+                }
+                for ln in r["lines"]
+            ],
+            "total": r["total"],
+            "currency": r["currency"],
+            "warnings": r["warnings"],
+            "speech": f"Drafted an invoice for {r['client_name']}: {r['currency']} {r['total']}.",
+        }
 
     return mcp
 

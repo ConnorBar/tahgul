@@ -15,7 +15,13 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-RUN useradd --system --uid 10001 --home /app tahgul
+# Pango and fonts for WeasyPrint (invoice PDFs).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-dejavu-core \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN useradd --system --uid 10001 --home /app tahgul \
+ && mkdir -p /data && chown tahgul /data
 WORKDIR /app
 
 COPY api/pyproject.toml ./
@@ -27,7 +33,9 @@ COPY api/migrations ./migrations
 COPY deploy/entrypoint.sh /entrypoint.sh
 COPY --from=web /web/dist ./static
 
-ENV TAHGUL_STATIC_DIR=/app/static
+ENV TAHGUL_STATIC_DIR=/app/static \
+    TAHGUL_DATA_DIR=/data
+VOLUME /data
 USER tahgul
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \

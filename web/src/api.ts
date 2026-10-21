@@ -66,6 +66,11 @@ export type Workspace = {
   rounding_minutes: number;
   rounding_mode: "up" | "nearest" | "down";
   timer_warning_minutes: number;
+  business_name: string | null;
+  business_address: string | null;
+  business_email: string | null;
+  payment_instructions: string | null;
+  invoice_footer: string | null;
 };
 
 export type Client = {
@@ -145,6 +150,19 @@ const MESSAGES: Record<string, string> = {
   parent_cycle: "A task can't be inside its own subtask.",
   column_has_tasks: "Move this column's tasks somewhere first.",
   last_column: "A board needs at least one column.",
+  scope_in_other_project: "That scope belongs to a different project.",
+  scope_needs_fee: "Fixed-fee and retainer scopes need a fee.",
+  scope_invoiced: "This scope's fee is already invoiced, so it can't change.",
+  invoice_issued: "This invoice has been issued and can't change. Void it to start again.",
+  invoice_empty: "Add at least one line before issuing.",
+  invoice_draft: "That invoice is still a draft.",
+  invoice_void: "That invoice is void.",
+  line_from_time: "Hours and rates on time lines come from the time entries. Edit those, then rebuild.",
+  client_needs_code: "The invoice number pattern uses {CLIENT}: give this client a code first.",
+  client_required: "Pick a client.",
+  period_start_after_end: "The period has to start before it ends.",
+  due_before_issue: "The due date can't be before the issue date.",
+  invoice_number_taken: "Another invoice took that number at the same moment. Try again.",
   cannot_shrink_tracked_time:
     "That would cut into timer entries. Edit those entries directly instead.",
 };
@@ -173,6 +191,8 @@ export type TimeEntry = {
   client_name: string | null;
   activity_id: string | null;
   activity_name: string | null;
+  scope_id: string | null;
+  scope_title: string | null;
   start_at: string;
   end_at: string | null;
   duration_seconds: number;
@@ -284,6 +304,7 @@ export type Task = {
   overdue: boolean;
   estimate_minutes: number | null;
   parent_id: string | null;
+  scope_id: string | null;
   position: number;
   completed_at: string | null;
   subtask_count: number;
@@ -414,4 +435,110 @@ export type CalEvent = {
   time_entry_id: string | null;
   origin: string | null;
   sync_pending: boolean;
+};
+
+export const SCOPE_TYPES = ["hourly", "fixed", "retainer"] as const;
+export const SCOPE_STATUSES = ["draft", "agreed", "done"] as const;
+
+export type Scope = {
+  id: string;
+  project_id: string;
+  title: string;
+  description: string | null;
+  type: (typeof SCOPE_TYPES)[number];
+  status: (typeof SCOPE_STATUSES)[number];
+  rate: string | null;
+  fee: string | null;
+  budget_hours: string | null;
+  budget_amount: string | null;
+  included_hours: string | null;
+  start_date: string | null;
+  end_date: string | null;
+  invoiced_at: string | null;
+  burn: {
+    hours: string;
+    amount: string;
+    hours_pct: string | null;
+    amount_pct: string | null;
+    warning: "ok" | "near" | "over" | null;
+  } | null;
+};
+
+export type ScopeReport = {
+  project_id: string;
+  scopes: Scope[];
+  outside_scope_hours: string;
+  outside_scope_amount: string;
+  creep: boolean;
+};
+
+export const INVOICE_GROUPINGS = ["project", "activity", "scope", "day", "entry"] as const;
+export type InvoiceStatus = "draft" | "sent" | "paid" | "void";
+
+export type InvoiceSummary = {
+  id: string;
+  workspace_id: string;
+  client_id: string;
+  client_name: string;
+  number: string | null;
+  status: InvoiceStatus;
+  issue_date: string;
+  due_date: string;
+  period_start: string;
+  period_end: string;
+  currency: string;
+  total: string;
+  paid_on: string | null;
+  overdue: boolean;
+  created_at: string;
+};
+
+export type InvoiceLine = {
+  id: string;
+  position: number;
+  kind: "time" | "fixed" | "retainer" | "overage" | "manual";
+  description: string;
+  quantity: string;
+  unit: "hours" | "item" | "month";
+  unit_price: string;
+  amount: string;
+  project_id: string | null;
+  scope_id: string | null;
+  period: string | null;
+  entry_count: number;
+};
+
+export type Invoice = InvoiceSummary & {
+  group_by: (typeof INVOICE_GROUPINGS)[number];
+  tax_rate: string | null;
+  subtotal: string;
+  tax_amount: string;
+  notes: string | null;
+  bill_from: string;
+  bill_to: string;
+  sent_at: string | null;
+  voided_at: string | null;
+  lines: InvoiceLine[];
+  hours: string;
+  warnings: string[];
+};
+
+export type Unbilled = {
+  client_id: string;
+  client_name: string;
+  workspace_id: string;
+  currency: string;
+  hours: string;
+  amount: string;
+  entries: number;
+  first_date: string;
+  last_date: string;
+};
+
+export type InvoiceTotals = {
+  currency: string;
+  outstanding: string;
+  overdue: string;
+  paid_this_year: string;
+  drafts: number;
 };

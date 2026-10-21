@@ -61,7 +61,7 @@ api/      FastAPI app (tahgul/), Alembic migrations
 web/      React + TypeScript + Vite, built into the API image
 mcp/      tahgul-mcp server (MCP tools over the REST API)
 deploy/   docker-compose.yml, Radicale image, Tailscale serve config, entrypoint
-docs/     SPEC.md, decisions.md, siri-shortcuts.md, agent.md, calendar.md
+docs/     SPEC.md, decisions.md, siri-shortcuts.md, agent.md, calendar.md, invoicing.md
 tests/    pytest
 ```
 
@@ -98,6 +98,10 @@ tests/    pytest
 ## Calendar
 
 Two-way CalDAV sync with the Radicale in the stack (or iCloud): events from the phone show in Tahgul's day/week view next to logged time, and events made in Tahgul or by the agent show on the phone. Optional Billable calendar mirroring every time entry, task time blocks, and "log this meeting as time?". Setup, including adding Radicale to the iPhone, is in [docs/calendar.md](docs/calendar.md).
+
+## Scopes and invoices
+
+Scopes (hourly, fixed fee, monthly retainer) track burn against a budget and flag work outside them. Invoices are drafted from a client and a period, edited, then issued with a gap-free number and a PDF; time on an invoice is locked. CSV exports for the accountant. See [docs/invoicing.md](docs/invoicing.md).
 
 ## Rates
 

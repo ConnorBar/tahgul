@@ -27,7 +27,9 @@ def amount_for(rate: Decimal | None, seconds: int | None) -> Decimal | None:
 def price(entry: TimeEntry) -> None:
     """Resolve and freeze the rate and amount onto the entry."""
     if entry.project is not None:
-        resolved = rates.project_rate(entry.project, entry.activity, entry.rate_override)
+        resolved = rates.project_rate(
+            entry.project, entry.activity, entry.rate_override, entry.scope
+        )
     else:
         resolved = rates.resolve_rate(
             workspace=entry.workspace.default_rate,

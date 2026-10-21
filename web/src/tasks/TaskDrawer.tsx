@@ -14,6 +14,7 @@ import {
   type TaskDetail,
 } from "../api";
 import { Markdown } from "../markdown";
+import { ScopeSelect } from "../scopes";
 import { useTimeInvalidation } from "../timer";
 import { Dialog, hm } from "../ui";
 import { useWorkspace } from "../workspace";
@@ -108,6 +109,8 @@ function TaskBody({ id, onClose, onOpen }: { id: string; onClose: () => void; on
             {TASK_TYPES.map((x) => <option key={x} value={x}>{x[0].toUpperCase() + x.slice(1)}</option>)}
           </select>
         </label>
+        <ScopeSelect projectId={t.project_id} value={t.scope_id ?? ""}
+          onChange={(v) => save.mutate({ scope_id: v || null })} />
         <label>
           Due date
           <input type="date" value={t.due_date ?? ""}

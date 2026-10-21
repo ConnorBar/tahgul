@@ -37,6 +37,9 @@ class Settings(BaseSettings):
     radicale_user: str | None = None
     radicale_password: str | None = None
 
+    # Invoice PDFs and voice notes. Mount a volume here in Docker.
+    data_dir: Path = Path("data")
+
     # Where the built web app lives. Empty or missing directory = API only.
     static_dir: Path = Path(__file__).parent / "static"
 

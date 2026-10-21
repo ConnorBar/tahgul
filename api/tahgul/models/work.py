@@ -38,6 +38,12 @@ class Workspace(RecordMixin, Base):
     rounding_mode: Mapped[str] = mapped_column(
         String(10), nullable=False, default="up", server_default="up"
     )
+    # Who the invoices are from (SPEC: invoicing). Shown on every invoice.
+    business_name: Mapped[str | None] = mapped_column(String(200))
+    business_address: Mapped[str | None] = mapped_column(Text)
+    business_email: Mapped[str | None] = mapped_column(String(320))
+    payment_instructions: Mapped[str | None] = mapped_column(Text)
+    invoice_footer: Mapped[str | None] = mapped_column(Text)
     # A running timer older than this asks whether to trim or keep it.
     timer_warning_minutes: Mapped[int] = mapped_column(
         nullable=False, default=240, server_default="240"

@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import ForeignKey, Index, Numeric, String, Text, Uuid, text
+from sqlalchemy import ForeignKey, Index, Numeric, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from tahgul.models.base import Base, RecordMixin, UTCDateTime
@@ -36,8 +36,10 @@ class TimeEntry(RecordMixin, Base):
     project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id"), index=True)
     activity_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("activities.id"))
     task_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("tasks.id"), index=True)
-    # Invoices arrive in milestone 7; the foreign key follows then.
-    invoice_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, index=True)
+    scope_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("scopes.id"), index=True)
+    # Set while the entry is on an invoice (draft or issued); invoiced time is locked.
+    invoice_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("invoices.id"), index=True)
+    invoice_line_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("invoice_lines.id"))
 
     start_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
     end_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
@@ -59,6 +61,7 @@ class TimeEntry(RecordMixin, Base):
     project: Mapped[Project | None] = relationship()
     activity: Mapped[Activity | None] = relationship()
     task: Mapped["Task | None"] = relationship()  # noqa: F821 (string-resolved)
+    scope: Mapped["Scope | None"] = relationship()  # noqa: F821
 
     @property
     def running(self) -> bool:

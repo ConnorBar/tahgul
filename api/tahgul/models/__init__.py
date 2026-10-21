@@ -1,6 +1,7 @@
 from tahgul.models.audit import AuditLog
 from tahgul.models.auth import ApiToken, LoginAttempt, User, UserSession
 from tahgul.models.base import Base
+from tahgul.models.billing import Invoice, InvoiceLine, InvoiceSequence, Scope
 from tahgul.models.calendar import Calendar, CalendarAccount, CalendarEvent
 from tahgul.models.idempotency import IdempotencyKey
 from tahgul.models.tasks import BoardColumn, Comment, SavedView, Task, TaskLink
@@ -19,9 +20,13 @@ __all__ = [
     "Client",
     "Comment",
     "IdempotencyKey",
+    "Invoice",
+    "InvoiceLine",
+    "InvoiceSequence",
     "LoginAttempt",
     "Project",
     "SavedView",
+    "Scope",
     "Task",
     "TaskLink",
     "TimeEntry",

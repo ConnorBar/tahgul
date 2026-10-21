@@ -56,6 +56,8 @@ def test_tools_are_listed(mcp):
         "log_time",
         "summary",
         "capture_idea",
+        "unbilled_work",
+        "draft_invoice",
         "create_event",
         "list_events",
         "events_to_log",
@@ -116,3 +118,23 @@ def test_agent_cannot_delete_or_change_rates(mcp):
     # No delete or rate tools exist; and the token itself lacks admin.
     names = {t.name for t in anyio.run(mcp.list_tools)}
     assert not any("delete" in n or "rate" in n for n in names)
+
+
+def test_invoice_tools_need_invoice_scope(mcp, logged_in, client):
+    c = logged_in
+    p = c.get(f"{API}/projects", params={"q": "Network audit"}).json()[0]
+    c.post(
+        f"{API}/time-entries",
+        json={"project_id": p["id"], "start_at": "2026-10-12T09:00:00", "duration_minutes": 120},
+    )
+    assert call(mcp, "draft_invoice", client="acme")["status"] == 403
+    token = c.post(f"{API}/tokens", json={"name": "billing", "scopes": ["read", "invoice"]}).json()[
+        "token"
+    ]
+    http = client.__class__(client.app)
+    http.headers["Authorization"] = f"Bearer {token}"
+    billing = build_server(TahgulAPI(http))
+    u = call(billing, "unbilled_work")
+    assert u["clients"][0]["client_name"] == "Acme Farms" and u["clients"][0]["hours"] == "2.00"
+    d = call(billing, "draft_invoice", client="acme", period_start="2026-10-01")
+    assert d["total"] == "250.00" and d["speech"].startswith("Drafted")

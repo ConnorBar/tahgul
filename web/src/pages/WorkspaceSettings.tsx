@@ -73,6 +73,11 @@ function WorkspaceForm({ ws }: { ws: Workspace }) {
     rounding_minutes: String(ws.rounding_minutes),
     rounding_mode: ws.rounding_mode,
     timer_warning_hours: String(ws.timer_warning_minutes / 60),
+    business_name: str(ws.business_name),
+    business_address: str(ws.business_address),
+    business_email: str(ws.business_email),
+    payment_instructions: str(ws.payment_instructions),
+    invoice_footer: str(ws.invoice_footer),
   });
   const [choice, setChoice] = useState<string>(ws.invoice_number_pattern);
   useEffect(() => {
@@ -103,6 +108,11 @@ function WorkspaceForm({ ws }: { ws: Workspace }) {
         rounding_minutes: Number(f.rounding_minutes),
         rounding_mode: f.rounding_mode,
         timer_warning_minutes: Math.round(Number(f.timer_warning_hours) * 60),
+        business_name: orNull(f.business_name),
+        business_address: orNull(f.business_address),
+        business_email: orNull(f.business_email),
+        payment_instructions: orNull(f.payment_instructions),
+        invoice_footer: orNull(f.invoice_footer),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["workspaces"] });
@@ -238,6 +248,35 @@ function WorkspaceForm({ ws }: { ws: Workspace }) {
               ))}
           </div>
         )}
+      </fieldset>
+
+      <fieldset>
+        <legend>On your invoices</legend>
+        <div className="grid-2">
+          <label>
+            Business name
+            <input value={f.business_name} onChange={set("business_name")} maxLength={200}
+              placeholder={f.name} />
+          </label>
+          <label>
+            Email
+            <input type="email" value={f.business_email} onChange={set("business_email")} />
+          </label>
+          <label>
+            Address
+            <textarea rows={3} value={f.business_address} onChange={set("business_address")}
+              placeholder={"123 Main St\nChicago, IL 60601"} />
+          </label>
+          <label>
+            How to pay
+            <textarea rows={3} value={f.payment_instructions} onChange={set("payment_instructions")}
+              placeholder="ACH, Zelle, check payable to…" />
+          </label>
+          <label className="span-2">
+            Footer <span className="muted small">(thanks, late-fee terms, EIN…)</span>
+            <input value={f.invoice_footer} onChange={set("invoice_footer")} />
+          </label>
+        </div>
       </fieldset>
 
       {save.isError && <p className="error">{errorMessage(save.error)}</p>}

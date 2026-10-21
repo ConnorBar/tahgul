@@ -58,6 +58,9 @@ services:
       TAHGUL_OWNER_PASSWORD: ${TAHGUL_OWNER_PASSWORD:-}
     ports:
       - "127.0.0.1:${TAHGUL_PORT:-8000}:8000"
+    volumes:
+      # Invoice PDFs and voice notes. Back this up along with the database.
+      - tahgul-data:/data
 
   tailscale:
     profiles: ["tailscale"]
@@ -79,4 +82,5 @@ services:
 volumes:
   db-data:
   radicale-data:
+  tahgul-data:
   ts-state:
