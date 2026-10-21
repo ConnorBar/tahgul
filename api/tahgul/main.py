@@ -27,6 +27,7 @@ from tahgul.routes import (
     time,
     timesheet,
     tokens,
+    voice_notes,
     workspaces,
 )
 
@@ -109,6 +110,7 @@ def create_app() -> FastAPI:
     app.include_router(calendar.router)
     app.include_router(scopes.router)
     app.include_router(invoices.router)
+    app.include_router(voice_notes.router)
     _mount_web(app)
     return app
 

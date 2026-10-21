@@ -389,6 +389,48 @@ def build_server(api: TahgulAPI) -> MCPServer:
         return {"id": r["id"], "name": r["name"], "status": r["status"]} if "id" in r else r
 
     @mcp.tool(annotations=READ)
+    def voice_notes(project: str | None = None, query: str | None = None) -> dict:
+        """Voice notes with their transcripts, newest first: on one project or idea (by
+        name), or matching words in the title or transcript. Use it to pull to-dos out of
+        a recorded idea, then create_task for each."""
+        params: dict = {"q": query, "limit": 20}
+        if project:
+            found = api.call("GET", "/projects", params={"q": project})
+            if isinstance(found, dict):
+                return found
+            exact = [p for p in found if p["name"].lower() == project.lower()]
+            hits = exact or found
+            if len(hits) != 1:
+                return {
+                    "needs_confirmation": bool(hits),
+                    "question": f"Which project did you mean by “{project}”?",
+                    "candidates": [p["name"] for p in hits[:8]],
+                }
+            params["project_id"] = hits[0]["id"]
+        r = api.call("GET", "/voice-notes", params=params)
+        if isinstance(r, dict):
+            return r
+        return {
+            "count": len(r),
+            "notes": [
+                {
+                    k: n.get(k)
+                    for k in (
+                        "id",
+                        "title",
+                        "recorded_at",
+                        "duration_seconds",
+                        "project_name",
+                        "task_ref",
+                        "transcript",
+                        "transcript_status",
+                    )
+                }
+                for n in r
+            ],
+        }
+
+    @mcp.tool(annotations=READ)
     def unbilled_work() -> dict:
         """Billable time not yet invoiced, per client: "who should I bill?"."""
         r = api.call("GET", "/invoices/unbilled")

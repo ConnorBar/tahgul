@@ -4,6 +4,7 @@ Voice notes attach here in milestone 8; "promote" turns an idea into a project.
 """
 
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
@@ -14,7 +15,7 @@ from tahgul import audit, tasks_service
 from tahgul.crud import get_live, resolve_workspace
 from tahgul.db import get_db
 from tahgul.deps import require_scope
-from tahgul.models import Project
+from tahgul.models import BoardColumn, Project, Task, VoiceNote
 from tahgul.principal import Principal
 from tahgul.routes.projects import ProjectOut, _load, _out
 
@@ -26,6 +27,13 @@ class IdeaIn(BaseModel):
     workspace_id: uuid.UUID | None = None
     title: str = Field(min_length=1, max_length=200)
     description: str | None = Field(None, max_length=20_000)
+    voice_note_id: uuid.UUID | None = Field(None, description="Move an existing note onto it")
+
+
+class IdeaOut(ProjectOut):
+    voice_note_count: int = 0
+    last_note_at: datetime | None = None
+    open_task_count: int = 0
 
 
 class PromoteIn(BaseModel):
@@ -53,7 +61,24 @@ def _free_name(db: Session, ws_id: uuid.UUID, title: str) -> str:
     return f"{title} ({n})"
 
 
-@router.get("", response_model=list[ProjectOut])
+def make_idea(
+    db: Session, principal: Principal, ws_id: uuid.UUID, title: str, description: str | None
+) -> Project:
+    p = Project(
+        workspace_id=ws_id,
+        name=_free_name(db, ws_id, title[:200]),
+        description=description,
+        status="idea",
+        colour="#8a5a9e",
+    )
+    db.add(p)
+    db.flush()
+    tasks_service.ensure_columns(db, p)
+    audit.record(db, principal, "create", "project", p.id, {"idea": p.name})
+    return p
+
+
+@router.get("", response_model=list[IdeaOut])
 def list_ideas(
     workspace_id: uuid.UUID | None = None,
     _: Principal = Depends(require_scope("read")),
@@ -67,7 +92,35 @@ def list_ideas(
         )
         .order_by(Project.created_at.desc())
     ).all()
-    return [_out(_load(db, p.id)) for p in rows]
+    notes = {
+        pid: (n, last)
+        for pid, n, last in db.execute(
+            select(VoiceNote.project_id, func.count(), func.max(VoiceNote.recorded_at))
+            .where(VoiceNote.project_id.in_([p.id for p in rows]), VoiceNote.deleted_at.is_(None))
+            .group_by(VoiceNote.project_id)
+        ).all()
+    }
+    open_tasks = dict(
+        db.execute(
+            select(Task.project_id, func.count())
+            .join(BoardColumn, Task.column_id == BoardColumn.id)
+            .where(
+                Task.project_id.in_([p.id for p in rows]),
+                Task.deleted_at.is_(None),
+                BoardColumn.is_done.is_(False),
+            )
+            .group_by(Task.project_id)
+        ).all()
+    )
+    out = []
+    for p in rows:
+        o = IdeaOut.model_validate(_out(_load(db, p.id)).model_dump())
+        o.voice_note_count, o.last_note_at = notes.get(p.id, (0, None))
+        o.open_task_count = open_tasks.get(p.id, 0)
+        out.append(o)
+    # Ideas you talked about most recently first.
+    out.sort(key=lambda o: o.last_note_at or o.created_at, reverse=True)
+    return out
 
 
 @router.post("", response_model=ProjectOut, status_code=status.HTTP_201_CREATED)
@@ -76,19 +129,14 @@ def create_idea(
     principal: Principal = Depends(require_scope("write")),
     db: Session = Depends(get_db),
 ):
-    """Create an idea project (a voice note can follow via /voice-notes in milestone 8)."""
+    """Create an idea project. Attach audio with /voice-notes (new_idea or project_id)."""
     ws = resolve_workspace(db, body.workspace_id)
-    p = Project(
-        workspace_id=ws.id,
-        name=_free_name(db, ws.id, body.title),
-        description=body.description,
-        status="idea",
-        colour="#8a5a9e",
-    )
-    db.add(p)
-    db.flush()
-    tasks_service.ensure_columns(db, p)
-    audit.record(db, principal, "create", "project", p.id, {"idea": p.name})
+    p = make_idea(db, principal, ws.id, body.title, body.description)
+    if body.voice_note_id:
+        note = get_live(db, VoiceNote, body.voice_note_id, "voice_note")
+        if note.workspace_id != ws.id:
+            raise HTTPException(422, detail="voice_note_in_other_workspace")
+        note.project_id, note.task_id = p.id, None
     db.commit()
     return _out(_load(db, p.id))
 

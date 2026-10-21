@@ -48,7 +48,7 @@ export default function Today({ me }: { me: Me }) {
           <span className="stat-n">{clients.data?.length ?? "…"}</span>
           <span className="muted">clients</span>
         </Link>
-        <Link to="/projects" className="stat">
+        <Link to="/ideas" className="stat">
           <span className="stat-n">{projects.data ? ideas.length : "…"}</span>
           <span className="muted">ideas</span>
         </Link>

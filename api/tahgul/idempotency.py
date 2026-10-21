@@ -121,6 +121,10 @@ class IdempotencyMiddleware:
         owner = _owner(headers)
         if not raw_key or owner is None:
             return await self.app(scope, receive, send)
+        # Uploads can be hundreds of MB; they de-duplicate on their own (voice notes by
+        # yog_id) rather than being buffered here.
+        if headers.get(b"content-type", b"").startswith(b"multipart/"):
+            return await self.app(scope, receive, send)
         key = raw_key.decode("latin-1").strip()[:255]
 
         body = b""

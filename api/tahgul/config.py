@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     # Invoice PDFs and voice notes. Mount a volume here in Docker.
     data_dir: Path = Path("data")
 
+    # Transcription (optional): an OpenAI-compatible speech-to-text server such as
+    # faster-whisper-server/speaches in the stack. Unset = no automatic transcripts.
+    whisper_url: str | None = None
+    whisper_model: str = "Systran/faster-whisper-small"
+    whisper_language: str | None = None
+
     # Where the built web app lives. Empty or missing directory = API only.
     static_dir: Path = Path(__file__).parent / "static"
 

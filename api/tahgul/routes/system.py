@@ -3,7 +3,10 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from tahgul import __version__
+from tahgul.config import get_settings
 from tahgul.db import get_db
+from tahgul.deps import require_scope
+from tahgul.principal import Principal
 
 router = APIRouter(prefix="/api/v1", tags=["system"])
 
@@ -18,3 +21,10 @@ def health(db: Session = Depends(get_db)):
             status.HTTP_503_SERVICE_UNAVAILABLE, detail="database_unavailable"
         ) from exc
     return {"status": "ok", "version": __version__}
+
+
+@router.get("/features")
+def features(_: Principal = Depends(require_scope("read"))):
+    """Optional services the server has, so clients can show or hide their buttons."""
+    s = get_settings()
+    return {"transcription": bool(s.whisper_url), "calendar_secret_key": bool(s.secret_key)}

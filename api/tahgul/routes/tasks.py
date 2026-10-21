@@ -809,6 +809,9 @@ def delete_task(
         )
     ).all():
         link.deleted_at = now
+    from tahgul.routes.voice_notes import unfile_for_tasks
+
+    unfile_for_tasks(db, [d.id for d in doomed])
     audit.record(db, principal, "delete", "task", t.id, {"title": t.title})
     db.commit()
     for d in doomed:

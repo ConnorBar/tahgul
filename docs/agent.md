@@ -16,6 +16,7 @@
 | `create_event` / `list_events` | The calendar (events land on the phone right away) |
 | `events_to_log` / `log_event_as_time` | "Log this meeting as time?" |
 | `capture_idea` | Save to the ideas inbox |
+| `voice_notes` | Read voice notes and transcripts on an idea or project, or search them ("pull the to-dos out of this idea") |
 | `unbilled_work` / `draft_invoice` | "Who should I bill?" and "draft an invoice for Acme". Only with a token that also has the **invoice** scope; drafts are never issued by the agent |
 
 There are no delete or rate tools, and the agent's token should have **read** and **write** only (add **invoice** if you want it drafting invoices). Agent writes show in each task's history as made by the token's name.

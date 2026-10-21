@@ -4,6 +4,9 @@ Answers to the open questions in [SPEC.md](SPEC.md), newest first.
 
 | Date | Question | Decision |
 | --- | --- | --- |
+| 2026-10-21 | Voice note with no target | Becomes a new idea in the inbox (titled from the note, or the time), so `curl -F file=@memo.m4a` just works. |
+| 2026-10-21 | Deleting work with audio | Deleting a task moves its notes to the project; deleting a project leaves its notes "unfiled" in the ideas inbox. Only deleting a note deletes audio, and that needs the owner or an `admin` token. |
+| 2026-10-21 | Audio type check | By the file's first bytes (m4a/mp4, mp3, wav, webm, ogg), not the name or declared type. Durations are read with `mutagen` when Yog doesn't send one. |
 | 2026-10-21 | Invoice lifecycle | Numbers are assigned when a draft is **issued** (never at draft time), so deleted drafts leave no gaps. Issued invoices are voided, not deleted; a void keeps its number. "Sent" means issued: Tahgul makes the PDF and you email it, so nothing goes to a client automatically. |
 | 2026-10-21 | Rounding on invoices | Applied per entry when lines are built, then summed. Logged time is never changed. |
 | 2026-10-21 | Retainers | One line per calendar month in the invoice period (between the scope's start and end), billed once per month even with no time. Hours over the monthly allowance are billed at the scope rate, else the entry's rate. |

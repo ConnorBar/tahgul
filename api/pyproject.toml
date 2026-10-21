@@ -20,6 +20,8 @@ dependencies = [
     "apscheduler>=3.10,<4",
     "jinja2>=3.1",
     "weasyprint>=62",
+    "mutagen>=1.47",
+    "python-multipart>=0.0.9",
 ]
 
 [project.optional-dependencies]
