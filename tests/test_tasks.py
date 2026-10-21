@@ -104,6 +104,9 @@ def test_status_by_name_and_done_tracking(logged_in, board):
     assert r["status"] == "Done" and r["done"] and r["completed_at"]
     r = c.patch(f"{API}/tasks/{t['id']}", json={"status": "To do"}).json()
     assert r["done"] is False and r["completed_at"] is None
+    # done=true/false works whatever the columns are called.
+    assert c.patch(f"{API}/tasks/{t['id']}", json={"done": True}).json()["status"] == "Done"
+    assert c.patch(f"{API}/tasks/{t['id']}", json={"done": False}).json()["status"] == "To do"
     bad = c.patch(f"{API}/tasks/{t['id']}", json={"status": "Nope"})
     assert bad.status_code == 422 and bad.json()["detail"]["choices"] == [
         "To do",

@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   PROJECT_STATUSES,
   api,
@@ -49,6 +49,7 @@ export default function Projects() {
     queryFn: () => api<Client[]>(`/clients?workspace_id=${ws.id}`),
   });
   const [editing, setEditing] = useState<Project | "new" | null>(null);
+  const navigate = useNavigate();
 
   const byStatus = (s: ProjectStatus) => projects.data?.filter((p) => p.status === s) ?? [];
 
@@ -86,7 +87,7 @@ export default function Projects() {
             </h2>
             <div className="cards">
               {list.map((p) => (
-                <button key={p.id} className="project-card" onClick={() => setEditing(p)}>
+                <button key={p.id} className="project-card" onClick={() => navigate(`/projects/${p.id}`)}>
                   <span className="dot" style={{ background: p.colour }} aria-hidden="true" />
                   <span className="pc-main">
                     <strong>{p.name}</strong>
@@ -121,9 +122,11 @@ export default function Projects() {
         {editing !== null && (
           <ProjectForm
             project={editing === "new" ? null : editing}
-            clients={clients.data ?? []}
             defaultClient={clientFilter}
-            onDone={() => setEditing(null)}
+            onDone={(created) => {
+              setEditing(null);
+              if (created) navigate(`/projects/${created.id}`);
+            }}
           />
         )}
       </Dialog>
@@ -131,19 +134,22 @@ export default function Projects() {
   );
 }
 
-function ProjectForm({
+export function ProjectForm({
   project,
-  clients,
-  defaultClient,
+  defaultClient = "",
   onDone,
 }: {
   project: Project | null;
-  clients: Client[];
-  defaultClient: string;
-  onDone: () => void;
+  defaultClient?: string;
+  onDone: (created?: Project) => void;
 }) {
   const qc = useQueryClient();
   const { current: ws } = useWorkspace();
+  const clientsQ = useQuery({
+    queryKey: ["clients", ws.id],
+    queryFn: () => api<Client[]>(`/clients?workspace_id=${ws.id}`),
+  });
+  const clients = clientsQ.data ?? [];
   const [f, setF] = useState({
     name: project?.name ?? "",
     client_id: project ? str(project.client_id) : defaultClient,
@@ -168,20 +174,26 @@ function ProjectForm({
     description: orNull(f.description),
   });
 
-  const done = () => {
+  const done = (created?: Project) => {
     qc.invalidateQueries({ queryKey: ["projects"] });
     qc.invalidateQueries({ queryKey: ["clients"] });
     qc.invalidateQueries({ queryKey: ["rate"] });
-    onDone();
+    onDone(created);
   };
   const save = useMutation({
     mutationFn: () =>
       project
-        ? patch(`/projects/${project.id}`, body())
-        : post("/projects", { ...body(), workspace_id: ws.id }),
-    onSuccess: done,
+        ? patch<Project>(`/projects/${project.id}`, body())
+        : post<Project>("/projects", { ...body(), workspace_id: ws.id }),
+    onSuccess: (saved) => done(project ? undefined : saved),
   });
-  const remove = useMutation({ mutationFn: () => del(`/projects/${project!.id}`), onSuccess: done });
+  const remove = useMutation({
+    mutationFn: () => del(`/projects/${project!.id}`),
+    onSuccess: () => {
+      done();
+      window.location.assign("/projects");
+    },
+  });
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -253,7 +265,7 @@ function ProjectForm({
           </button>
         )}
         <span className="spacer" />
-        <button type="button" className="ghost" onClick={onDone}>Cancel</button>
+        <button type="button" className="ghost" onClick={() => onDone()}>Cancel</button>
         <button type="submit" disabled={save.isPending}>{project ? "Save" : "Add project"}</button>
       </div>
     </form>

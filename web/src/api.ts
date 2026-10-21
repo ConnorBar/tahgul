@@ -134,6 +134,10 @@ const MESSAGES: Record<string, string> = {
   entry_invoiced: "This time is on an invoice, so it's locked.",
   start_in_future: "The start can't be in the future.",
   no_timer_running: "No timer is running.",
+  link_cycle: "That would make the two tasks wait on each other.",
+  parent_cycle: "A task can't be inside its own subtask.",
+  column_has_tasks: "Move this column's tasks somewhere first.",
+  last_column: "A board needs at least one column.",
   cannot_shrink_tracked_time:
     "That would cut into timer entries. Edit those entries directly instead.",
 };
@@ -141,6 +145,8 @@ const MESSAGES: Record<string, string> = {
 export function errorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     if (typeof err.detail === "string") return MESSAGES[err.detail] ?? err.detail;
+    const d = err.detail as { code?: string; choices?: string[] } | null;
+    if (d?.code === "unknown_status") return `Unknown status. Use one of: ${d.choices?.join(", ")}.`;
     if (Array.isArray(err.detail))
       return err.detail
         .map((d) => `${d.loc?.slice(-1)[0] ?? ""}: ${String(d.msg).replace(/^Value error, /, "")}`)
@@ -233,3 +239,119 @@ export type Summary = {
   by_week: (Totals & { week_start: string })[];
   entry_count: number;
 };
+
+export type Column = {
+  id: string;
+  project_id: string;
+  name: string;
+  position: number;
+  is_done: boolean;
+  task_count: number;
+};
+
+export const TASK_TYPES = ["task", "bug", "idea", "request"] as const;
+export const PRIORITIES = ["urgent", "high", "medium", "low", "none"] as const;
+export type Priority = (typeof PRIORITIES)[number];
+
+export type Task = {
+  id: string;
+  number: number;
+  ref: string;
+  workspace_id: string;
+  project_id: string;
+  project_name: string;
+  client_name: string | null;
+  colour: string;
+  column_id: string;
+  status: string;
+  done: boolean;
+  title: string;
+  description: string | null;
+  type: (typeof TASK_TYPES)[number];
+  priority: Priority;
+  labels: string[];
+  due_date: string | null;
+  due_time: string | null;
+  overdue: boolean;
+  estimate_minutes: number | null;
+  parent_id: string | null;
+  position: number;
+  completed_at: string | null;
+  subtask_count: number;
+  subtasks_done: number;
+  blocked_by: string[];
+  blocks: string[];
+  blocked: boolean;
+  tracked_seconds: number;
+  comment_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type TaskDetail = Task & { subtasks: Task[]; blockers: Task[]; blocking: Task[] };
+
+export type HistoryItem = {
+  kind: "comment" | "change";
+  at: string;
+  actor_type: string;
+  actor_name: string;
+  action: string | null;
+  changes: Record<string, unknown> | null;
+  body: string | null;
+  comment_id: string | null;
+};
+
+export type QuickResult = {
+  title: string;
+  priority: string | null;
+  labels: string[];
+  due_date: string | null;
+  due_time: string | null;
+  project_id: string | null;
+  project_name: string | null;
+  matched: string | null;
+  needs_confirmation: boolean;
+  candidates: { id: string; name: string }[];
+  task: Task | null;
+};
+
+export type TaskFilters = {
+  project?: string;
+  client?: string;
+  status?: string;
+  open?: boolean;
+  due_before?: string;
+  due_after?: string;
+  overdue?: boolean;
+  label?: string;
+  priority?: string[];
+  type?: string[];
+  q?: string;
+  top_level?: boolean;
+  sort?: "board" | "due" | "priority" | "created" | "updated" | "number";
+  due_within_days?: number;
+};
+
+export type SavedView = {
+  id: string;
+  workspace_id: string;
+  name: string;
+  filters: TaskFilters;
+  position: number;
+};
+
+/** Filters → query string; due_within_days becomes due_before relative to today. */
+export function taskQuery(f: TaskFilters, today: string, extra: Record<string, string> = {}) {
+  const p = new URLSearchParams(extra);
+  for (const [k, v] of Object.entries(f)) {
+    if (v === undefined || v === "" || v === null || k === "due_within_days") continue;
+    if (Array.isArray(v)) v.forEach((x) => p.append(k, String(x)));
+    else p.set(k, String(v));
+  }
+  if (f.due_within_days !== undefined && !f.due_before) {
+    const d = new Date(`${today}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + Number(f.due_within_days));
+    p.set("due_before", d.toISOString().slice(0, 10));
+  }
+  return p.toString();
+}

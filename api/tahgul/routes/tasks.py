@@ -101,6 +101,9 @@ class TaskIn(TaskFields):
 class TaskPatch(TaskFields):
     title: str | None = Field(None, min_length=1, max_length=300)
     status: str | None = Field(None, description="Column id or name (moves to the bottom)")
+    done: bool | None = Field(
+        None, description="true = first done column, false = first open column"
+    )
     project_id: uuid.UUID | None = Field(None, description="Move to another project")
 
 
@@ -693,8 +696,14 @@ def update_task(
         data.pop("project_id", None)
 
     status_ref = data.pop("status", None)
-    if status_ref is not None:
-        col = ts.find_column(db, t.project, status_ref)
+    done = data.pop("done", None)
+    if status_ref is not None or done is not None:
+        if status_ref is not None:
+            col = ts.find_column(db, t.project, status_ref)
+        elif done == t.column.is_done:
+            col = t.column
+        else:
+            col = ts.find_column(db, t.project, None, default_done=done)
         if col.id != t.column_id:
             changes["status"] = [t.column.name, col.name]
             ts.place(db, t, col, None)
