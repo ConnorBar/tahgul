@@ -74,9 +74,10 @@ jobs:
           curl -fsS http://127.0.0.1:8000/api/v1/health
           curl -fsS http://127.0.0.1:8000/api/docs | grep -q swagger
           curl -fsS http://127.0.0.1:8000/ | grep -q '<div id="root">'
-          curl -fsS -X POST http://127.0.0.1:8000/api/v1/auth/login \
+          curl -fsS -c jar -X POST http://127.0.0.1:8000/api/v1/auth/login \
             -H 'Content-Type: application/json' \
             -d '{"email":"ci@example.com","password":"ci-password-long"}'
+          curl -fsS -b jar http://127.0.0.1:8000/api/v1/workspaces | grep -q Consulting
       - name: Logs on failure
         if: failure()
         run: docker compose -f deploy/docker-compose.yml logs

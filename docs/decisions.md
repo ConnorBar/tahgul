@@ -4,6 +4,8 @@ Answers to the open questions in [SPEC.md](SPEC.md), newest first.
 
 | Date | Question | Decision |
 | --- | --- | --- |
+| 2026-10-21 | Agent limits | Tokens get a fourth scope, `admin`, needed to delete records or change rates. Read / write / invoice tokens can't do either (SPEC: security, agent limits). |
+| 2026-10-21 | Starting workspace | New installs get a "Consulting" workspace with the defaults below; more can be added under Settings. |
 | 2026-10-20 | App name | **Tahgul.** The spec still says "Ledger (working name)"; the code, env vars (`TAHGUL_*`), token prefix (`thg_`) and UI use Tahgul. |
 | 2026-10-20 | Currency | **USD** as the default for new workspaces; each workspace can change it. |
 | 2026-10-20 | Tax / VAT | **Off by default.** A workspace or client can set a tax rate later; blank means no tax line. Revisit before invoicing (milestone 7). Whether consulting needs a tax line (Illinois, and any later move) is a question for the CPA. |

@@ -1,7 +1,22 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
-import type { Me } from "../api";
+import { api, type Client, type Project, type Me } from "../api";
+import { money } from "../ui";
+import { useWorkspace } from "../workspace";
 
 export default function Today({ me }: { me: Me }) {
+  const { current: ws } = useWorkspace();
+  const projects = useQuery({
+    queryKey: ["projects", ws.id, ""],
+    queryFn: () => api<Project[]>(`/projects?workspace_id=${ws.id}`),
+  });
+  const clients = useQuery({
+    queryKey: ["clients", ws.id],
+    queryFn: () => api<Client[]>(`/clients?workspace_id=${ws.id}`),
+  });
+  const active = projects.data?.filter((p) => p.status === "active") ?? [];
+  const ideas = projects.data?.filter((p) => p.status === "idea") ?? [];
+
   return (
     <section className="page">
       <h1>Today</h1>
@@ -14,12 +29,37 @@ export default function Today({ me }: { me: Me }) {
         </div>
       )}
 
+      {!ws.default_rate && (
+        <div className="notice">
+          No default hourly rate yet. <Link to="/settings/workspace">Set one</Link> so every
+          project has a rate to fall back on.
+        </div>
+      )}
+
+      <div className="stats">
+        <Link to="/projects" className="stat">
+          <span className="stat-n">{projects.data ? active.length : "…"}</span>
+          <span className="muted">active projects</span>
+        </Link>
+        <Link to="/clients" className="stat">
+          <span className="stat-n">{clients.data?.length ?? "…"}</span>
+          <span className="muted">clients</span>
+        </Link>
+        <Link to="/projects" className="stat">
+          <span className="stat-n">{projects.data ? ideas.length : "…"}</span>
+          <span className="muted">ideas</span>
+        </Link>
+        <Link to="/settings/workspace" className="stat">
+          <span className="stat-n">{money(ws.default_rate, ws.currency)}</span>
+          <span className="muted">default rate</span>
+        </Link>
+      </div>
+
       <div className="card">
         <h2>Coming next</h2>
         <p className="muted">
-          This is the skeleton. Clients and projects, the timer, the board, calendar sync and
-          invoicing arrive in the milestones that follow. The full API is documented at{" "}
-          <a href="/api/docs">/api/docs</a>.
+          The timer and timesheet arrive next, then the board, calendar sync and invoicing. The
+          full API is documented at <a href="/api/docs">/api/docs</a>.
         </p>
       </div>
     </section>
