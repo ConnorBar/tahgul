@@ -507,3 +507,4 @@ h1 .status-badge { font-size: 0.8rem; margin-left: 0.4rem; }
 .add-audio { margin: 0.5rem 0; }
 
 [hidden] { display: none !important; }
+.warn-text { color: #b07a12; }

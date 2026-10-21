@@ -18,3 +18,20 @@ def test_reset_totp(db, owner):
     assert main(["reset-totp", "--email", owner.email]) == 0
     db.refresh(owner)
     assert owner.totp_enabled is False and owner.totp_secret is None
+
+
+def test_seed_demo(owner, logged_in, capsys):
+    from datetime import date
+
+    from tahgul import demo
+    from tahgul.cli import main
+
+    made = demo.seed(today=date(2026, 10, 21))
+    assert made["clients"] == 3 and made["time_entries"] > 20 and made["invoice"] == "2026-001"
+    c = logged_in
+    summary = c.get("/api/v1/reports/summary", params={"from": "2026-09-01", "to": "2026-10-31"})
+    assert float(summary.json()["totals"]["amount"]) > 1000
+    assert len(c.get("/api/v1/ideas").json()) == 2
+    assert c.get("/api/v1/tokens").json() == []  # the seed token is gone
+    assert main(["seed-demo"]) == 1  # refuses a second time
+    assert "--force" in capsys.readouterr().err

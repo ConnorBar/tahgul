@@ -381,3 +381,14 @@ def test_exports(logged_in, setup):
     assert [(x["number"], x["total"], x["status"]) for x in rows] == [
         ("2026-001", "187.50", "sent")
     ]
+
+
+def test_report_by_scope(logged_in, setup):
+    c, s = logged_in, setup
+    ph1 = scope(c, s["sensors"], title="Phase 1", budget_hours="2")
+    log(c, s["sensors"], 2, 150, scope_id=ph1["id"])
+    log(c, s["sensors"], 3, 60)  # outside the scope
+    log(c, s["audit"], 3, 60)  # project without scopes: not in by_scope
+    r = c.get(f"{API}/reports/summary", params={"from": "2026-09-01", "to": "2026-09-30"}).json()
+    lines = [(x["title"], x["hours"], x["burn_warning"]) for x in r["by_scope"]]
+    assert lines == [("Phase 1", "2.50", "over"), ("Outside agreed scopes", "1.00", None)]

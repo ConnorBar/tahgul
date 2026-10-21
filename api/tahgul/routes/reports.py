@@ -1,4 +1,4 @@
-"""Reports: hours and money by client, project and week (SPEC: ideas inbox and reports)."""
+"""Reports: hours and money by client, project, scope and week (SPEC: ideas inbox and reports)."""
 
 import uuid
 from collections import defaultdict
@@ -50,6 +50,18 @@ class ProjectLine(Totals):
     budget_amount_left: TwoPlaces | None
 
 
+class ScopeLine(Totals):
+    scope_id: uuid.UUID | None = Field(description="None = work outside every scope")
+    title: str
+    project_id: uuid.UUID
+    project_name: str
+    type: str | None
+    budget_hours: TwoPlaces | None
+    budget_amount: TwoPlaces | None
+    used_hours_all_time: TwoPlaces | None
+    burn_warning: str | None = Field(description="ok, near (80%) or over (100%), all time")
+
+
 class WeekLine(Totals):
     week_start: date
 
@@ -62,6 +74,9 @@ class Summary(BaseModel):
     totals: Totals
     by_client: list[ClientLine]
     by_project: list[ProjectLine]
+    by_scope: list[ScopeLine] = Field(
+        description="Scoped work, plus work outside the scopes of projects that have any"
+    )
     by_week: list[WeekLine]
     entry_count: int
 
@@ -138,6 +153,7 @@ def summary(
     by_client: dict = defaultdict(_Acc)
     by_project: dict = defaultdict(_Acc)
     by_week: dict = defaultdict(_Acc)
+    by_scope: dict = defaultdict(_Acc)
     projects: dict = {}
     for e in entries:
         total.add(e)
@@ -146,6 +162,8 @@ def summary(
         by_project[p.id if p else None].add(e)
         projects[p.id if p else None] = p
         by_week[tk.week_start(tk.local_date(e.start_at, zone))].add(e)
+        if p is not None:
+            by_scope[(p.id, e.scope_id)].add(e)
 
     # Budgets are measured against all work ever logged on the project.
     used = _all_time_usage(db, [pid for pid in projects if pid])
@@ -179,6 +197,7 @@ def summary(
         ),
         key=lambda x: -x.hours,
     )
+    scope_lines = _scope_lines(db, by_scope, projects)
     week_lines = [WeekLine(week_start=w, **acc.totals()) for w, acc in sorted(by_week.items())]
 
     return Summary(
@@ -189,9 +208,53 @@ def summary(
         totals=Totals(**total.totals()),
         by_client=client_lines,
         by_project=project_lines,
+        by_scope=scope_lines,
         by_week=week_lines,
         entry_count=len(entries),
     )
+
+
+def _scope_lines(db: Session, by_scope: dict, projects: dict) -> list[ScopeLine]:
+    from tahgul.models import Scope
+    from tahgul.routes.scopes import scope_outs
+
+    scoped_projects = set(
+        db.scalars(
+            select(Scope.project_id).where(
+                Scope.project_id.in_([pid for pid in projects if pid]),
+                Scope.deleted_at.is_(None),
+            )
+        ).all()
+    )
+    scope_ids = [sid for (_, sid) in by_scope if sid]
+    scopes = {
+        o.id: o
+        for o in scope_outs(
+            db, list(db.scalars(select(Scope).where(Scope.id.in_(scope_ids))).all())
+        )
+    }
+    lines = []
+    for (pid, sid), acc in by_scope.items():
+        p = projects[pid]
+        if sid is None and pid not in scoped_projects:
+            continue
+        o = scopes.get(sid)
+        lines.append(
+            ScopeLine(
+                scope_id=sid,
+                title=o.title if o else "Outside agreed scopes",
+                project_id=pid,
+                project_name=p.name,
+                type=o.type if o else None,
+                budget_hours=o.budget_hours if o else None,
+                budget_amount=o.budget_amount if o else None,
+                used_hours_all_time=o.burn.hours if o and o.burn else None,
+                burn_warning=o.burn.warning if o and o.burn else None,
+                **acc.totals(),
+            )
+        )
+    lines.sort(key=lambda x: (x.project_name, x.scope_id is None, -x.hours))
+    return lines
 
 
 def _all_time_usage(db: Session, project_ids: list[uuid.UUID]) -> dict:

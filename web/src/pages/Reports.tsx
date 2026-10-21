@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api, type Client, type Summary } from "../api";
@@ -178,6 +179,45 @@ export default function Reports() {
               </table>
             </div>
           </div>
+
+          {s.by_scope.length > 0 && (
+            <div className="card flush">
+              <h2 className="table-title">By scope</h2>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Scope</th>
+                      <th className="num">Hours</th>
+                      <th className="num">Amount</th>
+                      <th>Budget (all time)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {s.by_scope.map((x) => (
+                      <tr key={`${x.project_id}-${x.scope_id}`}>
+                        <td>
+                          <Link to={`/projects/${x.project_id}?view=scopes`}>
+                            {x.scope_id ? <strong>{x.title}</strong> : <em>{x.title}</em>}
+                          </Link>
+                          <span className="muted"> · {x.project_name}</span>
+                        </td>
+                        <td className="num">{hoursLabel(x.hours)}</td>
+                        <td className="num">{money(x.amount, cur)}</td>
+                        <td className="small">
+                          {x.budget_hours ? (
+                            <span className={x.burn_warning === "over" ? "danger-text" : x.burn_warning === "near" ? "warn-text" : undefined}>
+                              {hoursLabel(x.used_hours_all_time ?? "0") || 0} of {hoursLabel(x.budget_hours)} h
+                            </span>
+                          ) : x.scope_id ? <span className="muted">—</span> : <span className="muted">possible scope creep</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {s.by_week.length > 1 && (
             <div className="card flush">
