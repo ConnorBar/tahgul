@@ -25,6 +25,8 @@ docker compose --profile tailscale up -d --build
 
 Lost your authenticator? `docker compose exec api tahgul reset-totp --email you@example.com`.
 
+Try it with demo data: `docker compose exec api tahgul seed-demo`. Backups, restores, updates and smoke tests: [docs/operations.md](docs/operations.md).
+
 ## Develop
 
 API (Python 3.12):
@@ -60,9 +62,9 @@ After changing models: `cd api && alembic revision --autogenerate -m "what chang
 api/      FastAPI app (tahgul/), Alembic migrations
 web/      React + TypeScript + Vite, built into the API image
 mcp/      tahgul-mcp server (MCP tools over the REST API)
-deploy/   docker-compose.yml, Radicale image, Tailscale serve config, entrypoint
-docs/     SPEC.md, decisions.md, siri-shortcuts.md, agent.md, calendar.md, invoicing.md, voice-notes.md
-tests/    pytest
+deploy/   docker-compose.yml, Radicale image, Tailscale serve config, entrypoint, backup/restore
+docs/     SPEC.md, decisions.md, siri-shortcuts.md, agent.md, calendar.md, invoicing.md, voice-notes.md, operations.md
+tests/    pytest; tests/smoke: Playwright against a running stack
 ```
 
 ## Auth model

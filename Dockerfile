@@ -34,6 +34,7 @@ COPY deploy/entrypoint.sh /entrypoint.sh
 COPY --from=web /web/dist ./static
 
 ENV TAHGUL_STATIC_DIR=/app/static \
+    XDG_CACHE_HOME=/tmp/.cache \
     TAHGUL_DATA_DIR=/data
 VOLUME /data
 USER tahgul

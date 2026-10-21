@@ -271,6 +271,17 @@ export type Summary = {
     budget_hours_left: string | null;
     budget_amount_left: string | null;
   })[];
+  by_scope: (Totals & {
+    scope_id: string | null;
+    title: string;
+    project_id: string;
+    project_name: string;
+    type: string | null;
+    budget_hours: string | null;
+    budget_amount: string | null;
+    used_hours_all_time: string | null;
+    burn_warning: "ok" | "near" | "over" | null;
+  })[];
   by_week: (Totals & { week_start: string })[];
   entry_count: number;
 };
