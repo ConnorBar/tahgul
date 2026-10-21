@@ -472,3 +472,38 @@ h1 .status-badge { font-size: 0.8rem; margin-left: 0.4rem; }
   .invoice-preview { position: static; }
   .manual-line { grid-template-columns: 1fr 1fr; }
 }
+
+/* Ideas and voice notes */
+.capture { display: flex; flex-direction: column; gap: 0.6rem; }
+.capture form input { flex: 1; }
+.capture-voice { align-items: center; }
+.ideas { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 1rem; }
+.idea { padding: 0; }
+.idea-head { display: flex; width: 100%; justify-content: space-between; align-items: center; gap: 1rem; padding: 0.9rem 1rem; }
+.idea-head:hover { text-decoration: none; }
+.idea-head > span:first-child { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
+.idea-desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.idea-counts { display: flex; gap: 0.75rem; flex-shrink: 0; }
+.idea-body { padding: 0 1rem 1rem; border-top: 1px solid var(--line); }
+.idea-actions { margin-top: 0.75rem; align-items: center; }
+.voice-notes { list-style: none; padding: 0; margin: 0.75rem 0; display: flex; flex-direction: column; gap: 0.75rem; }
+.note { border: 1px solid var(--line); border-radius: var(--radius); padding: 0.75rem; background: var(--surface); }
+.note-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1rem; margin-bottom: 0.5rem; }
+.player { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.player audio { flex: 1; min-width: 220px; height: 40px; }
+.speed { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.speed button { background: transparent; color: var(--text); border: 0; border-radius: 0; padding: 0.3rem 0.6rem; font-size: 0.85rem; }
+.speed button + button { border-left: 1px solid var(--line); }
+.speed button.on { background: var(--accent); color: var(--accent-text); }
+.note-transcript { margin: 0.6rem 0 0; }
+.note-transcript textarea { width: 100%; }
+.note-actions { margin-top: 0.5rem; gap: 1rem; color: var(--muted); }
+.note-actions a { color: inherit; }
+.add-note { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin: 0.75rem 0; }
+.add-note input { flex: 1; min-width: 12rem; }
+.add-note.compact { margin: 0; }
+.add-note .error { width: 100%; }
+.notes-panel { max-width: 52rem; }
+.add-audio { margin: 0.5rem 0; }
+
+[hidden] { display: none !important; }

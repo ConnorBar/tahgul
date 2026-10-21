@@ -61,7 +61,7 @@ api/      FastAPI app (tahgul/), Alembic migrations
 web/      React + TypeScript + Vite, built into the API image
 mcp/      tahgul-mcp server (MCP tools over the REST API)
 deploy/   docker-compose.yml, Radicale image, Tailscale serve config, entrypoint
-docs/     SPEC.md, decisions.md, siri-shortcuts.md, agent.md, calendar.md, invoicing.md
+docs/     SPEC.md, decisions.md, siri-shortcuts.md, agent.md, calendar.md, invoicing.md, voice-notes.md
 tests/    pytest
 ```
 
@@ -102,6 +102,10 @@ Two-way CalDAV sync with the Radicale in the stack (or iCloud): events from the 
 ## Scopes and invoices
 
 Scopes (hourly, fixed fee, monthly retainer) track burn against a budget and flag work outside them. Invoices are drafted from a client and a period, edited, then issued with a gap-free number and a PDF; time on an invoice is locked. CSV exports for the accountant. See [docs/invoicing.md](docs/invoicing.md).
+
+## Ideas and voice notes
+
+An ideas inbox (ideas are projects in status `idea`) with voice notes: Yog, Shortcuts or `curl` upload audio to an idea, project or task; the web app plays it back with seeking and 1.5×/2×, and records in the browser. See [docs/voice-notes.md](docs/voice-notes.md).
 
 ## Rates
 

@@ -15,6 +15,7 @@ import {
 } from "../api";
 import { Markdown } from "../markdown";
 import { ScopeSelect } from "../scopes";
+import { AddVoiceNote, VoiceNotes, useVoiceNotes } from "../voice";
 import { useTimeInvalidation } from "../timer";
 import { Dialog, hm } from "../ui";
 import { useWorkspace } from "../workspace";
@@ -84,6 +85,7 @@ function TaskBody({ id, onClose, onOpen }: { id: string; onClose: () => void; on
         <TaskMeta task={t} timeZone={ws.timezone} />
         <Description value={t.description} onSave={(description) => save.mutate({ description })} />
         <Subtasks parent={t} onOpen={onOpen} />
+        <TaskNotes taskId={t.id} />
         <Blockers task={t} onOpen={onOpen} />
         <Timeline taskId={id} />
       </div>
@@ -344,6 +346,22 @@ function Timeline({ taskId }: { taskId: string }) {
           placeholder="Write a comment (Markdown)" aria-label="Comment" />
         <button disabled={!body.trim() || add.isPending}>Comment</button>
       </form>
+    </section>
+  );
+}
+
+function TaskNotes({ taskId }: { taskId: string }) {
+  const notes = useVoiceNotes({ taskId });
+  const [adding, setAdding] = useState(false);
+  if (!notes.data?.length && !adding)
+    return (
+      <button className="linkish muted small add-audio" onClick={() => setAdding(true)}>🎙 Attach a voice note</button>
+    );
+  return (
+    <section className="task-section">
+      <h3>Voice notes</h3>
+      <VoiceNotes where={{ taskId }} empty={null} />
+      <AddVoiceNote target={{ task_id: taskId }} compact />
     </section>
   );
 }

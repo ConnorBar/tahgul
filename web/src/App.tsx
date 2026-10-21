@@ -3,6 +3,7 @@ import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { ApiError, api, post, type Me } from "./api";
 import CalendarPage from "./pages/CalendarPage";
 import Clients from "./pages/Clients";
+import Ideas from "./pages/Ideas";
 import Invoices, { InvoicePage } from "./pages/Invoices";
 import Login from "./pages/Login";
 import ProjectPage from "./pages/ProjectPage";
@@ -69,6 +70,7 @@ function Shell({ me }: { me: Me }) {
           <NavLink to="/time">Time</NavLink>
           <NavLink to="/calendar">Calendar</NavLink>
           <NavLink to="/projects">Projects</NavLink>
+          <NavLink to="/ideas">Ideas</NavLink>
           <NavLink to="/clients">Clients</NavLink>
           <NavLink to="/invoices">Invoices</NavLink>
           <NavLink to="/reports">Reports</NavLink>
@@ -87,6 +89,7 @@ function Shell({ me }: { me: Me }) {
           <Route path="/tasks" element={<Tasks />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/projects/:id" element={<ProjectPage />} />
+          <Route path="/ideas" element={<Ideas />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/invoices" element={<Invoices />} />
           <Route path="/invoices/:id" element={<InvoicePage />} />

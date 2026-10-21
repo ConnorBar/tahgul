@@ -57,6 +57,7 @@ def test_tools_are_listed(mcp):
         "summary",
         "capture_idea",
         "unbilled_work",
+        "voice_notes",
         "draft_invoice",
         "create_event",
         "list_events",
@@ -138,3 +139,25 @@ def test_invoice_tools_need_invoice_scope(mcp, logged_in, client):
     assert u["clients"][0]["client_name"] == "Acme Farms" and u["clients"][0]["hours"] == "2.00"
     d = call(billing, "draft_invoice", client="acme", period_start="2026-10-01")
     assert d["total"] == "250.00" and d["speech"].startswith("Drafted")
+
+
+def test_voice_notes_tool(mcp, logged_in):
+    import io
+    import wave
+
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(8000)
+        w.writeframes(b"\x00\x00" * 800)
+    meta = {"new_idea": {"title": "Drone surveys"}, "transcript": "Call the FAA. Price a drone."}
+    r = logged_in.post(
+        f"{API}/voice-notes",
+        files={"file": ("n.wav", buf.getvalue(), "audio/wav")},
+        data={"metadata": json.dumps(meta)},
+    )
+    assert r.status_code == 201, r.text
+    found = call(mcp, "voice_notes", project="Drone surveys")
+    assert found["count"] == 1 and found["notes"][0]["transcript"].startswith("Call the FAA")
+    assert call(mcp, "voice_notes", query="faa")["count"] == 1

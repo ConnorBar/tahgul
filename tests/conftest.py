@@ -5,6 +5,7 @@ throwaway SQLite file, so `pytest` works on a laptop with no database running.
 """
 
 import os
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -38,6 +39,7 @@ def _fresh_db():
     engine = get_engine()
     Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
+    shutil.rmtree(_tmp / "data", ignore_errors=True)  # invoice PDFs, audio
     yield
     engine.dispose()
 

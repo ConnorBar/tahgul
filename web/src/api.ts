@@ -13,7 +13,8 @@ export class ApiError extends Error {
 export async function api<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("X-Requested-With", "tahgul");
-  if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
+  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type"))
+    headers.set("Content-Type", "application/json");
 
   const res = await fetch(`/api/v1${path}`, { ...options, headers, credentials: "same-origin" });
   if (res.status === 204) return undefined as T;
@@ -163,6 +164,11 @@ const MESSAGES: Record<string, string> = {
   period_start_after_end: "The period has to start before it ends.",
   due_before_issue: "The due date can't be before the issue date.",
   invoice_number_taken: "Another invoice took that number at the same moment. Try again.",
+  unsupported_audio: "That file isn't audio Tahgul can store. Use m4a, mp3, wav, webm or ogg.",
+  audio_too_large: "That recording is over 200 MB.",
+  audio_file_missing: "The audio file is missing from storage.",
+  whisper_not_configured: "Transcription isn't set up on the server (TAHGUL_WHISPER_URL).",
+  not_an_idea: "That project isn't an idea anymore.",
   cannot_shrink_tracked_time:
     "That would cut into timer entries. Edit those entries directly instead.",
 };
@@ -542,3 +548,43 @@ export type InvoiceTotals = {
   paid_this_year: string;
   drafts: number;
 };
+
+export type VoiceNote = {
+  id: string;
+  workspace_id: string;
+  title: string | null;
+  recorded_at: string;
+  duration_seconds: number | null;
+  mime_type: string;
+  size_bytes: number;
+  project_id: string | null;
+  project_name: string | null;
+  project_status: string | null;
+  task_id: string | null;
+  task_ref: string | null;
+  task_title: string | null;
+  transcript: string | null;
+  transcript_source: "yog" | "whisper" | "owner" | null;
+  transcript_status: "none" | "pending" | "done" | "failed";
+  yog_id: string | null;
+  source: string;
+  playback_url: string;
+  download_url: string;
+  duplicate: boolean;
+  created_at: string;
+};
+
+export type Idea = Project & {
+  voice_note_count: number;
+  last_note_at: string | null;
+  open_task_count: number;
+  created_at: string;
+};
+
+/** Upload audio as multipart (the API sniffs the real type). */
+export function uploadVoiceNote(file: Blob, filename: string, meta: Record<string, unknown>) {
+  const fd = new FormData();
+  fd.append("file", file, filename);
+  fd.append("metadata", JSON.stringify(meta));
+  return api<VoiceNote>("/voice-notes", { method: "POST", body: fd });
+}

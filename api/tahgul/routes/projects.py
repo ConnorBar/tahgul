@@ -226,6 +226,9 @@ def delete_project(
     require_admin(principal, "deleting")
     p = _load(db, project_id)
     p.deleted_at = utcnow()
+    from tahgul.routes.voice_notes import unfile_for_project
+
+    unfile_for_project(db, p.id)
     audit.record(db, principal, "delete", "project", p.id, {"name": p.name})
     db.commit()
 
