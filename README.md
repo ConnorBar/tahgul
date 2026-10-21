@@ -71,6 +71,14 @@ tests/    pytest
 - **API tokens** (Settings → API tokens) are one per client, scoped `read` / `write` / `invoice` / `admin`, stored as SHA-256 hashes, shown once and revocable. Send them as `Authorization: Bearer thg_…`. Deleting records and changing rates need `admin`; tokens can never manage tokens or security settings.
 - Every write lands in `audit_log` with who made it.
 
+## Time
+
+- **Timer:** one at a time across all workspaces; starting a new one stops the old. It lives in the top bar and can start with or without a project. Past the workspace's warning limit (default 4 h) it offers to trim, keep or discard.
+- **Entries:** times without an offset are read in the workspace time zone (default America/Chicago). Each entry freezes its rate and amount when saved; editing the project, activity, times or override re-prices it, and Settings → Workspace can re-price everything not yet invoiced.
+- **Timesheet:** typing hours into the week grid (`1.5`, `1:30`, `90m`) adds or trims manual entries; timer entries are never shortened from the grid.
+- **Reports:** `GET /api/v1/reports/summary?from=&to=&client=` gives hours, money, unbilled amount and effective rate by client, project and week, plus budget used across all time.
+- **Rounding** (e.g. up to 6 minutes) is a workspace setting applied when invoicing; logged time stays exact.
+
 ## Rates
 
 The rate for a piece of work is the most specific one set: time-entry override → activity → scope → project → client → workspace default. `GET /api/v1/projects/{id}/rate?activity_id=` shows the answer and every level behind it. A rate of 0 counts as set (pro bono).

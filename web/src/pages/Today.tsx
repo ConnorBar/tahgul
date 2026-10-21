@@ -58,8 +58,8 @@ export default function Today({ me }: { me: Me }) {
       <div className="card">
         <h2>Coming next</h2>
         <p className="muted">
-          The timer and timesheet arrive next, then the board, calendar sync and invoicing. The
-          full API is documented at <a href="/api/docs">/api/docs</a>.
+          The board and task tracking arrive next, then the Siri and agent API, calendar sync
+          and invoicing. The full API is documented at <a href="/api/docs">/api/docs</a>.
         </p>
       </div>
     </section>
