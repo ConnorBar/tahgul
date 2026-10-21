@@ -97,6 +97,15 @@ def test_create_with_all_fields(logged_in, board):
     assert task(logged_in, board["other"], "Second")["number"] == 2  # per workspace
 
 
+def test_changing_due_time(logged_in, board):
+    """Regression: a time-of-day in the audit diff used to crash the update."""
+    t = task(logged_in, board["p"], "Call", due_date="2026-10-29", due_time="13:00")
+    r = logged_in.patch(f"{API}/tasks/{t['id']}", json={"due_time": "15:30"})
+    assert r.status_code == 200 and r.json()["due_time"] == "15:30:00"
+    hist = logged_in.get(f"{API}/tasks/{t['id']}/history").json()
+    assert hist[-1]["changes"]["due_time"] == ["13:00:00", "15:30:00"]
+
+
 def test_status_by_name_and_done_tracking(logged_in, board):
     c = logged_in
     t = task(c, board["p"], "Write report")
