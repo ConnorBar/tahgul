@@ -29,6 +29,7 @@ from tahgul.models import (
     Workspace,
 )
 from tahgul.principal import Principal
+from tahgul.routes.scopes import check_scope
 from tahgul.timeutil import utcnow
 
 router = APIRouter(prefix="/api/v1", tags=["tasks"])
@@ -89,6 +90,7 @@ class TaskFields(BaseModel):
     due_time: time | None = None
     estimate_minutes: int | None = Field(None, ge=0, le=100_000)
     parent_id: uuid.UUID | None = None
+    scope_id: uuid.UUID | None = None
 
     _labels = field_validator("labels")(_clean_labels)
 
@@ -137,6 +139,7 @@ class TaskOut(BaseModel):
     overdue: bool
     estimate_minutes: int | None
     parent_id: uuid.UUID | None
+    scope_id: uuid.UUID | None = None
     position: float
     completed_at: datetime | None
     subtask_count: int = 0
@@ -333,6 +336,7 @@ def outs(db: Session, tasks: list[Task]) -> list[TaskOut]:
                 overdue=bool(t.due_date and not done and t.due_date < today),
                 estimate_minutes=t.estimate_minutes,
                 parent_id=t.parent_id,
+                scope_id=t.scope_id,
                 position=t.position,
                 completed_at=t.completed_at,
                 subtask_count=subs[t.id][0],
@@ -535,6 +539,7 @@ def _create_task(
     if project.deleted_at is not None:
         raise HTTPException(404, detail="project_not_found")
     column = ts.find_column(db, project, status_ref)
+    check_scope(db, fields.get("scope_id"), project.id)
     parent_id = fields.get("parent_id")
     if parent_id is not None:
         parent = get_live(db, Task, parent_id, "parent_task")
@@ -687,7 +692,15 @@ def get_task_by_number(
     return detail(db, t)
 
 
-NULLABLE = {"description", "labels", "due_date", "due_time", "estimate_minutes", "parent_id"}
+NULLABLE = {
+    "description",
+    "labels",
+    "due_date",
+    "due_time",
+    "estimate_minutes",
+    "parent_id",
+    "scope_id",
+}
 
 
 @router.patch("/tasks/{task_id}", response_model=TaskOut)
@@ -714,6 +727,7 @@ def update_task(
         ts.place(db, t, target, None)
         if t.parent_id:
             t.parent_id = None
+        t.scope_id = None  # scopes belong to one project
         changes["project"] = [old, project.name]
     else:
         data.pop("project_id", None)
@@ -731,6 +745,8 @@ def update_task(
             changes["status"] = [t.column.name, col.name]
             ts.place(db, t, col, None)
 
+    if data.get("scope_id") is not None:
+        check_scope(db, data["scope_id"], t.project_id)
     if data.get("parent_id") is not None:
         parent = get_live(db, Task, data["parent_id"], "parent_task")
         if parent.project_id != t.project_id:

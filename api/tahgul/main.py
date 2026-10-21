@@ -17,9 +17,11 @@ from tahgul.routes import (
     calendar,
     clients,
     ideas,
+    invoices,
     projects,
     quick,
     reports,
+    scopes,
     system,
     tasks,
     time,
@@ -105,6 +107,8 @@ def create_app() -> FastAPI:
     app.include_router(ideas.router)
     app.include_router(quick.router)
     app.include_router(calendar.router)
+    app.include_router(scopes.router)
+    app.include_router(invoices.router)
     _mount_web(app)
     return app
 

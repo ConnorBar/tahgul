@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Invoice {{ inv.number or "draft" }}</title>
+<style>
+  @page {
+    size: Letter;
+    margin: 0.75in 0.75in 0.9in;
+    @bottom-center {
+      content: "{{ (inv.number or 'Draft') | e }} · page " counter(page) " of " counter(pages);
+      font: 8pt "DejaVu Sans", sans-serif; color: #777;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { font: 9.5pt/1.45 "DejaVu Sans", "Helvetica", sans-serif; color: #1d2421; margin: 0; }
+  .top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .from { white-space: pre-line; }
+  .from strong { font-size: 12pt; display: block; margin-bottom: 2pt; }
+  h1 { font-size: 22pt; letter-spacing: 0.04em; margin: 0 0 6pt; color: #2f5d50; text-align: right; }
+  table.meta { margin-left: auto; border-collapse: collapse; }
+  table.meta td { padding: 1pt 0 1pt 14pt; text-align: right; }
+  table.meta td:first-child { color: #66706b; }
+  .to { margin: 26pt 0 18pt; }
+  .label { font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.08em; color: #66706b; margin-bottom: 3pt; }
+  .to div.addr { white-space: pre-line; }
+  table.lines { width: 100%; border-collapse: collapse; }
+  table.lines th { text-align: left; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.08em;
+                   color: #66706b; border-bottom: 1.2pt solid #2f5d50; padding: 4pt 4pt; }
+  table.lines td { padding: 6pt 4pt; border-bottom: 0.5pt solid #dfe3e1; vertical-align: top; }
+  table.lines tr { page-break-inside: avoid; }
+  .num { text-align: right; white-space: nowrap; }
+  table.totals { margin: 10pt 0 0 auto; border-collapse: collapse; min-width: 42%; }
+  table.totals td { padding: 3pt 4pt; }
+  table.totals tr.total td { border-top: 1.2pt solid #2f5d50; font-weight: bold; font-size: 11pt; padding-top: 6pt; }
+  .notes { margin-top: 24pt; white-space: pre-line; }
+  .pay { margin-top: 16pt; padding: 8pt 10pt; background: #f2f5f3; border-left: 2.5pt solid #2f5d50; white-space: pre-line; }
+  .footer { margin-top: 24pt; color: #66706b; font-size: 8.5pt; white-space: pre-line; }
+  .stamp { position: fixed; top: 38%; left: 0; right: 0; text-align: center; font-size: 72pt;
+           font-weight: bold; color: rgba(160, 40, 40, 0.13); transform: rotate(-24deg); letter-spacing: 0.1em; }
+  .paid { color: #2f5d50; font-weight: bold; }
+</style>
+</head>
+<body>
+{% if draft %}<div class="stamp">DRAFT</div>{% elif void %}<div class="stamp">VOID</div>{% endif %}
+<div class="top">
+  <div class="from">{% set parts = bill_from.split("\n", 1) %}<strong>{{ parts[0] }}</strong>{% if parts|length > 1 %}{{ parts[1] }}{% endif %}</div>
+  <div>
+    <h1>INVOICE</h1>
+    <table class="meta">
+      <tr><td>Number</td><td>{{ inv.number or "Draft" }}</td></tr>
+      <tr><td>Issued</td><td>{{ inv.issue_date | date }}</td></tr>
+      <tr><td>Due</td><td>{{ inv.due_date | date }}{% if terms > 0 %} (net {{ terms }}){% endif %}</td></tr>
+      <tr><td>Period</td><td>{{ inv.period_start | span(inv.period_end) }}</td></tr>
+      {% if inv.paid_on %}<tr><td>Paid</td><td class="paid">{{ inv.paid_on | date }}</td></tr>{% endif %}
+    </table>
+  </div>
+</div>
+
+<div class="to">
+  <div class="label">Bill to</div>
+  <div class="addr">{{ bill_to }}</div>
+</div>
+
+<table class="lines">
+  <thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Amount</th></tr></thead>
+  <tbody>
+  {% for ln in lines %}
+    <tr>
+      <td>{{ ln.description }}</td>
+      <td class="num">{{ ln.quantity | qty }}{% if ln.unit == "hours" %} h{% elif ln.unit == "month" %} mo{% endif %}</td>
+      <td class="num">{{ ln.unit_price | money(inv.currency) }}{% if ln.unit == "hours" %}/h{% endif %}</td>
+      <td class="num">{{ ln.amount | money(inv.currency) }}</td>
+    </tr>
+  {% else %}
+    <tr><td colspan="4">No billable work in this period.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+<table class="totals">
+  {% if inv.tax_rate %}
+  <tr><td>Subtotal</td><td class="num">{{ inv.subtotal | money(inv.currency) }}</td></tr>
+  <tr><td>Tax ({{ inv.tax_rate | qty }}%)</td><td class="num">{{ inv.tax_amount | money(inv.currency) }}</td></tr>
+  {% endif %}
+  <tr class="total"><td>Total due ({{ inv.currency }})</td><td class="num">{{ inv.total | money(inv.currency) }}</td></tr>
+</table>
+
+{% if inv.notes %}<div class="notes">{{ inv.notes }}</div>{% endif %}
+{% if ws.payment_instructions %}<div class="pay"><div class="label">How to pay</div>{{ ws.payment_instructions }}</div>{% endif %}
+{% if ws.invoice_footer %}<div class="footer">{{ ws.invoice_footer }}</div>{% endif %}
+</body>
+</html>

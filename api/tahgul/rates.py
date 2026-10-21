@@ -52,15 +52,14 @@ def project_rate(
     project: Project,
     activity: Activity | None = None,
     entry: Decimal | None = None,
+    scope=None,
 ) -> ResolvedRate:
-    """Effective rate for work on a project, optionally for one activity.
-
-    Scopes arrive in milestone 7 and slot in between activity and project.
-    """
+    """Effective rate for work on a project, optionally for one activity and scope."""
     return resolve_rate(
         workspace=project.workspace.default_rate,
         client=project.client.rate if project.client and not project.client.deleted_at else None,
         project=project.rate,
+        scope=scope.rate if scope is not None and scope.deleted_at is None else None,
         activity=activity.rate if activity else None,
         entry=entry,
     )

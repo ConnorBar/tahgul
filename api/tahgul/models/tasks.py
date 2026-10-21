@@ -48,8 +48,7 @@ class Task(RecordMixin, Base):
         ForeignKey("projects.id"), index=True, nullable=False
     )
     column_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("board_columns.id"), nullable=False)
-    # Scopes arrive in milestone 7; the foreign key follows then.
-    scope_id: Mapped[uuid.UUID | None] = mapped_column()
+    scope_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("scopes.id"), index=True)
     parent_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("tasks.id"), index=True)
 
     title: Mapped[str] = mapped_column(String(300), nullable=False)

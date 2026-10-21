@@ -201,15 +201,17 @@ def test_overlaps_are_reported(logged_in, setup):
     assert clean["overlaps"] == []
 
 
-def test_invoiced_entries_are_locked(logged_in, setup, db):
-    import uuid
-
-    from tahgul.models import TimeEntry
-
+def test_invoiced_entries_are_locked(logged_in, setup):
     e = log(logged_in, setup["p"]["audit"], "2026-10-12T09:00:00", 60)
-    row = db.get(TimeEntry, uuid.UUID(e["id"]))
-    row.invoice_id = uuid.uuid4()
-    db.commit()
+    r = logged_in.post(
+        f"{API}/invoices",
+        json={
+            "client_id": setup["acme"]["id"],
+            "period_start": "2026-10-01",
+            "period_end": "2026-10-31",
+        },
+    )
+    assert r.json()["lines"][0]["entry_count"] == 1
     r = logged_in.patch(f"{API}/time-entries/{e['id']}", json={"notes": "x"})
     assert r.status_code == 409 and r.json()["detail"] == "entry_invoiced"
     assert logged_in.delete(f"{API}/time-entries/{e['id']}").status_code == 409

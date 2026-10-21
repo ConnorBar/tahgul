@@ -82,6 +82,11 @@ class WorkspaceIn(BaseModel):
     rounding_minutes: int = Field(0, description="Round billed time to this many minutes.")
     rounding_mode: Literal["up", "nearest", "down"] = "up"
     timer_warning_minutes: int = Field(240, ge=15, le=24 * 60)
+    business_name: str | None = Field(None, max_length=200, description="Invoice 'from' name")
+    business_address: str | None = Field(None, max_length=2000)
+    business_email: str | None = Field(None, max_length=320)
+    payment_instructions: str | None = Field(None, max_length=4000)
+    invoice_footer: str | None = Field(None, max_length=4000)
 
     _currency = field_validator("currency")(_check_currency)
     _tz = field_validator("timezone")(_check_timezone)
@@ -102,6 +107,11 @@ class WorkspacePatch(BaseModel):
     rounding_minutes: int | None = None
     rounding_mode: Literal["up", "nearest", "down"] | None = None
     timer_warning_minutes: int | None = Field(None, ge=15, le=24 * 60)
+    business_name: str | None = Field(None, max_length=200, description="Invoice 'from' name")
+    business_address: str | None = Field(None, max_length=2000)
+    business_email: str | None = Field(None, max_length=320)
+    payment_instructions: str | None = Field(None, max_length=4000)
+    invoice_footer: str | None = Field(None, max_length=4000)
 
     _currency = field_validator("currency")(_check_currency)
     _tz = field_validator("timezone")(_check_timezone)
@@ -123,12 +133,25 @@ class WorkspaceOut(BaseModel):
     rounding_minutes: int
     rounding_mode: str
     timer_warning_minutes: int
+    business_name: str | None
+    business_address: str | None
+    business_email: str | None
+    payment_instructions: str | None
+    invoice_footer: str | None
     created_at: datetime
     updated_at: datetime
 
 
 # Fields that may be cleared with an explicit null in a PATCH.
-NULLABLE = {"default_rate", "tax_rate"}
+NULLABLE = {
+    "default_rate",
+    "tax_rate",
+    "business_name",
+    "business_address",
+    "business_email",
+    "payment_instructions",
+    "invoice_footer",
+}
 
 
 @router.get("/workspaces", response_model=list[WorkspaceOut])

@@ -5,11 +5,12 @@ import { api, type Project, type Task } from "../api";
 import { Board } from "../tasks/Board";
 import { TaskDrawer } from "../tasks/TaskDrawer";
 import { QuickAdd, TaskCalendar, TaskTable } from "../tasks/views";
+import { ScopesPanel } from "../scopes";
 import { Dialog, money } from "../ui";
 import { useWorkspace } from "../workspace";
 import { ProjectForm } from "./Projects";
 
-type View = "board" | "list" | "calendar";
+type View = "board" | "list" | "calendar" | "scopes";
 
 export default function ProjectPage() {
   const { id = "" } = useParams();
@@ -27,7 +28,7 @@ export default function ProjectPage() {
   const tasks = useQuery({
     queryKey: ["tasks", "project", id],
     queryFn: () => api<Task[]>(`/tasks?project=${id}&sort=board`),
-    enabled: view !== "board",
+    enabled: view === "list" || view === "calendar",
   });
   const [editing, setEditing] = useState(false);
   const p = project.data;
@@ -48,20 +49,21 @@ export default function ProjectPage() {
       </div>
       <div className="row view-bar">
         <nav className="tabs compact" aria-label="Views">
-          {(["board", "list", "calendar"] as View[]).map((v) => (
+          {(["board", "list", "calendar", "scopes"] as View[]).map((v) => (
             <a key={v} href={`?view=${v}`} className={view === v ? "active" : undefined}
               onClick={(e) => { e.preventDefault(); setParam("view", v === "board" ? null : v); }}>
               {v[0].toUpperCase() + v.slice(1)}
             </a>
           ))}
         </nav>
-        <QuickAdd projectId={id} />
+        {view !== "scopes" && <QuickAdd projectId={id} />}
       </div>
 
       {view === "board" && <Board projectId={id} onOpen={(t) => setParam("task", t)} />}
       {view === "list" && tasks.data && (
         <TaskTable tasks={tasks.data} onOpen={(t) => setParam("task", t)} showProject={false} />
       )}
+      {view === "scopes" && <ScopesPanel projectId={id} />}
       {view === "calendar" && tasks.data && <TaskCalendar tasks={tasks.data} onOpen={(t) => setParam("task", t)} />}
 
       <TaskDrawer taskId={openTask} onClose={() => setParam("task", null)} onOpen={(t) => setParam("task", t)} />

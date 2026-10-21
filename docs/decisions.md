@@ -4,6 +4,10 @@ Answers to the open questions in [SPEC.md](SPEC.md), newest first.
 
 | Date | Question | Decision |
 | --- | --- | --- |
+| 2026-10-21 | Invoice lifecycle | Numbers are assigned when a draft is **issued** (never at draft time), so deleted drafts leave no gaps. Issued invoices are voided, not deleted; a void keeps its number. "Sent" means issued: Tahgul makes the PDF and you email it, so nothing goes to a client automatically. |
+| 2026-10-21 | Rounding on invoices | Applied per entry when lines are built, then summed. Logged time is never changed. |
+| 2026-10-21 | Retainers | One line per calendar month in the invoice period (between the scope's start and end), billed once per month even with no time. Hours over the monthly allowance are billed at the scope rate, else the entry's rate. |
+| 2026-10-21 | Voiding | Needs the `admin` token scope (or the owner), like deletes. Drafting and issuing need `invoice`. |
 | 2026-10-21 | Calendar home | **Self-hosted Radicale** in the stack, as the spec recommends, reached by the phone over Tailscale on port 8443. iCloud stays available as an account type; the sync code is the same. |
 | 2026-10-21 | CalDAV client | A small client of our own (`api/tahgul/caldav.py`, ~250 lines over httpx) instead of the `caldav` package the spec names. Two-way sync depends on exact control of `If-Match`/`If-None-Match`, sync-collection tokens and 412 handling, and the `caldav` 3.x API was in flux. Tested against a real Radicale server in CI. |
 | 2026-10-21 | Event times | Tahgul writes event times in UTC (no VTIMEZONE needed). Floating times from other apps are read in the workspace time zone. Repeating events are read-only in Tahgul. |
