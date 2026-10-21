@@ -127,3 +127,23 @@ def test_spa_fallback_serves_index(tmp_path, monkeypatch):
         assert c.get("/assets/app.js").text == "console.log(1)"
         assert c.get("/api/v1/nope").status_code == 404
         assert c.get("/api/docs").status_code == 200
+
+
+def test_pwa_files(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from tahgul.config import get_settings
+    from tahgul.main import create_app
+
+    (tmp_path / "index.html").write_text("<div id=root></div>")
+    (tmp_path / "sw.js").write_text("self.addEventListener('fetch', () => {})")
+    (tmp_path / "manifest.webmanifest").write_text('{"name": "Tahgul"}')
+    (tmp_path / "icon-192.png").write_bytes(b"\x89PNG")
+    monkeypatch.setattr(get_settings(), "static_dir", tmp_path)
+    with TestClient(create_app()) as c:
+        sw = c.get("/sw.js")
+        assert sw.headers["cache-control"] == "no-cache"
+        assert "javascript" in sw.headers["content-type"]
+        m = c.get("/manifest.webmanifest")
+        assert m.headers["content-type"].startswith("application/manifest+json")
+        assert c.get("/icon-192.png").headers["content-type"] == "image/png"

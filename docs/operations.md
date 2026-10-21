@@ -40,6 +40,16 @@ It checks the checksums, asks you to type `restore`, stops the app, replaces the
 
 CI runs a backup → change → restore round trip on every push. Do one by hand on the homelab before relying on it.
 
+## On your phone
+
+Tahgul is an installable web app. Open `https://tahgul.<tailnet>.ts.net` in Safari, tap **Share → Add to Home Screen**, and it opens full screen like a native app, with Today, Tasks, Time and Calendar in a bottom tab bar and everything else under **More**. On Android/Chrome use **Install app**. Coming back to it refreshes what's on screen. If Tailscale is off, it shows a "Can't reach Tahgul" page instead of a browser error.
+
+It must be opened over HTTPS (the Tailscale URL) for installing and for in-browser recording to work.
+
+### Linking from a landing page
+
+A public page (say, a Vercel site listing your apps) can link to `https://tahgul.<tailnet>.ts.net`. The link only opens on devices signed in to your tailnet, which is the point: Tahgul itself never goes on the public internet. Don't proxy or rewrite Tahgul through the public site, or the login cookie and the no-public-exposure rule both break.
+
 ## Updating
 
 ```sh

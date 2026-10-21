@@ -10,7 +10,9 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: (count, err) => !(err instanceof ApiError && err.status < 500) && count < 2,
-      refetchOnWindowFocus: false,
+      // Coming back to the installed app on the phone refreshes what's on screen.
+      refetchOnWindowFocus: true,
+      staleTime: 30_000,
     },
   },
 });
@@ -24,3 +26,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     </QueryClientProvider>
   </React.StrictMode>,
 );
+
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      /* not fatal: the app works without it */
+    });
+  });
+}

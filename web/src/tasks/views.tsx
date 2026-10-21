@@ -30,10 +30,10 @@ export function TaskTable({ tasks, onOpen, showProject = true }: {
             <tr>
               <th aria-label="Done" />
               <th>Task</th>
-              {showProject && <th>Project</th>}
-              <th>Status</th>
-              <th>Priority</th>
-              <th>Due</th>
+              {showProject && <th className="wide-only">Project</th>}
+              <th className="wide-only">Status</th>
+              <th className="wide-only">Priority</th>
+              <th className="wide-only">Due</th>
             </tr>
           </thead>
           <tbody>
@@ -51,16 +51,22 @@ export function TaskTable({ tasks, onOpen, showProject = true }: {
                   <span className="muted ref">{t.ref}</span> <strong className="tt">{t.title}</strong>
                   {t.blocked && <span className="blocked"> Blocked</span>}
                   {t.labels.map((l) => <span key={l} className="label">#{l}</span>)}
+                  <div className="task-sub narrow-only small muted">
+                    {showProject && <><span className="dot inline-dot" style={{ background: t.colour }} />{t.project_name} · </>}
+                    {t.status}
+                    {t.priority !== "none" && <> · <PriorityBadge p={t.priority} /></>}
+                    {t.due_date && <> · <DueLabel task={t} timeZone={ws.timezone} /></>}
+                  </div>
                 </td>
                 {showProject && (
-                  <td>
+                  <td className="wide-only">
                     <span className="dot inline-dot" style={{ background: t.colour }} />
                     {t.project_name}
                   </td>
                 )}
-                <td>{t.status}</td>
-                <td><PriorityBadge p={t.priority} /></td>
-                <td><DueLabel task={t} timeZone={ws.timezone} /></td>
+                <td className="wide-only">{t.status}</td>
+                <td className="wide-only"><PriorityBadge p={t.priority} /></td>
+                <td className="wide-only"><DueLabel task={t} timeZone={ws.timezone} /></td>
               </tr>
             ))}
           </tbody>

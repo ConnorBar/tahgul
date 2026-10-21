@@ -142,7 +142,14 @@ def _mount_web(app: FastAPI) -> None:
             raise HTTPException(404, detail="not_found")
         candidate = (static / path).resolve()
         if path and candidate.is_file() and candidate.is_relative_to(static.resolve()):
-            return FileResponse(candidate)
+            # The service worker and manifest must update promptly.
+            fresh = path in ("sw.js", "manifest.webmanifest", "offline.html")
+            media = "application/manifest+json" if path.endswith(".webmanifest") else None
+            return FileResponse(
+                candidate,
+                media_type=media,
+                headers={"Cache-Control": "no-cache"} if fresh else None,
+            )
         return FileResponse(index, headers={"Cache-Control": "no-cache"})
 
 
