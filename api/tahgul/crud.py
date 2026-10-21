@@ -1,7 +1,7 @@
 """Small helpers shared by the CRUD routers."""
 
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Annotated, Any
 
@@ -95,7 +95,7 @@ def guard_rate_fields(principal: Principal, data: dict[str, Any], fields: set[st
 def _plain(v: Any) -> Any:
     if isinstance(v, Decimal | uuid.UUID):
         return str(v)
-    if isinstance(v, date | datetime):
+    if isinstance(v, date | datetime | time):
         return v.isoformat()
     return v
 

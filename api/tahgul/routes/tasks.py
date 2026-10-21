@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from tahgul import audit, lookup, quickadd
+from tahgul import audit, lookup, mirror, quickadd
 from tahgul import tasks_service as ts
 from tahgul.crud import apply_changes, get_live, patch_data, require_admin, resolve_workspace
 from tahgul.db import get_db
@@ -731,6 +731,8 @@ def update_task(
     if changes:
         audit.record(db, principal, "update", "task", t.id, changes)
         db.commit()
+        if {"title", "due_date", "due_time"} & changes.keys():
+            mirror.refresh_task_block(db, principal, t)
     return out(db, _load(db, task_id))
 
 
@@ -780,6 +782,8 @@ def delete_task(
         link.deleted_at = now
     audit.record(db, principal, "delete", "task", t.id, {"title": t.title})
     db.commit()
+    for d in doomed:
+        mirror.refresh_task_block(db, principal, d)
 
 
 # --- Blocked-by links ------------------------------------------------------------------

@@ -14,6 +14,8 @@ os.environ["TAHGUL_DATABASE_URL"] = os.environ.get(
 )
 os.environ["TAHGUL_COOKIE_SECURE"] = "false"  # TestClient talks plain HTTP
 os.environ["TAHGUL_STATIC_DIR"] = str(_tmp / "no-web-build")
+os.environ["TAHGUL_SECRET_KEY"] = "test-secret-key-that-is-long-enough"
+os.environ["TAHGUL_SCHEDULER_ENABLED"] = "false"
 os.environ.pop("TAHGUL_OWNER_EMAIL", None)
 os.environ.pop("TAHGUL_OWNER_PASSWORD", None)
 

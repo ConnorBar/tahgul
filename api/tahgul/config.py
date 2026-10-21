@@ -25,6 +25,14 @@ class Settings(BaseSettings):
     login_max_failures: int = 10
     login_window_minutes: int = 15
 
+    # Encrypts stored credentials (calendar passwords). Any long random string; keep it
+    # out of the repo, and back it up: changing it makes saved passwords unreadable.
+    secret_key: str | None = None
+
+    # Calendar sync
+    scheduler_enabled: bool = True
+    sync_minutes: int = 3
+
     # Where the built web app lives. Empty or missing directory = API only.
     static_dir: Path = Path(__file__).parent / "static"
 

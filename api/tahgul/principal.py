@@ -12,7 +12,7 @@ TOKEN_SCOPES = ("read", "write", "invoice", "admin")
 class Principal:
     """Who is making a request: the owner in a browser session, or a named API token."""
 
-    kind: Literal["owner", "token"]
+    kind: Literal["owner", "token", "sync"]
     name: str
     scopes: frozenset[str] = field(default_factory=frozenset)
     user_id: uuid.UUID | None = None

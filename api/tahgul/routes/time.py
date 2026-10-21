@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from tahgul import audit, lookup
+from tahgul import audit, lookup, mirror
 from tahgul import timekeeping as tk
 from tahgul.crud import (
     RateIn,
@@ -303,6 +303,8 @@ def start_timer(
         db, principal, "start", "time_entry", e.id, snapshot({"project": project and project.name})
     )
     _commit(db)
+    if stopped is not None:
+        mirror.mirror_entries(db, principal, [stopped])
     return _timer_out(db, stopped)
 
 
@@ -332,6 +334,7 @@ def stop_timer(
     tk.price(e)
     audit.record(db, principal, "stop", "time_entry", e.id, {"seconds": e.duration_seconds})
     db.commit()
+    mirror.mirror_entries(db, principal, [e])
     return out(load(db, e.id), tk.overlapping(db, e))
 
 
@@ -444,6 +447,7 @@ def create_entry(
         snapshot({"project": project and project.name, "seconds": e.duration_seconds}),
     )
     db.commit()
+    mirror.mirror_entries(db, principal, [e])
     return out(load(db, e.id), tk.overlapping(db, e))
 
 
@@ -517,6 +521,7 @@ def update_entry(
     e = load(db, entry_id)
     _locked(e)
     _apply_patch(db, e, body, principal)
+    mirror.mirror_entries(db, principal, [e])
     return out(load(db, entry_id), tk.overlapping(db, e))
 
 
@@ -532,6 +537,7 @@ def delete_entry(
     e.deleted_at = utcnow()
     audit.record(db, principal, "delete", "time_entry", e.id)
     db.commit()
+    mirror.mirror_entries(db, principal, [e])
 
 
 @router.post("/time-entries/reprice", response_model=RepriceOut)
