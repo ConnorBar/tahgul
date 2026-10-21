@@ -74,6 +74,17 @@ async def lifespan(app: FastAPI):
             coalesce=True,
             next_run_time=datetime.now(UTC) + timedelta(seconds=20),
         )
+        if s.whisper_url:
+            from tahgul import transcribe
+
+            scheduler.add_job(
+                transcribe.run_pending,
+                "interval",
+                minutes=1,
+                max_instances=1,
+                coalesce=True,
+                next_run_time=datetime.now(UTC) + timedelta(seconds=30),
+            )
         scheduler.start()
     yield
     if scheduler is not None:

@@ -52,6 +52,11 @@ services:
       TAHGUL_RADICALE_URL: http://radicale:5232/
       TAHGUL_RADICALE_USER: ${RADICALE_USER}
       TAHGUL_RADICALE_PASSWORD: ${RADICALE_PASSWORD}
+      # Transcription: start the stack with --profile whisper and set this to
+      # http://whisper:8000 in deploy/.env (or point it at any OpenAI-compatible server).
+      TAHGUL_WHISPER_URL: ${TAHGUL_WHISPER_URL:-}
+      TAHGUL_WHISPER_MODEL: ${TAHGUL_WHISPER_MODEL:-Systran/faster-whisper-small}
+      TAHGUL_WHISPER_LANGUAGE: ${TAHGUL_WHISPER_LANGUAGE:-}
       # Plain HTTP on localhost during development; true behind Tailscale HTTPS.
       TAHGUL_COOKIE_SECURE: ${TAHGUL_COOKIE_SECURE:-true}
       TAHGUL_OWNER_EMAIL: ${TAHGUL_OWNER_EMAIL:-}
@@ -61,6 +66,16 @@ services:
     volumes:
       # Invoice PDFs and voice notes. Back this up along with the database.
       - tahgul-data:/data
+
+  # Local speech-to-text (faster-whisper behind an OpenAI-compatible API). Optional:
+  #   docker compose --profile whisper up -d
+  # The first transcription downloads the model (~500 MB for "small") into whisper-models.
+  whisper:
+    profiles: ["whisper"]
+    image: ghcr.io/speaches-ai/speaches:latest-cpu
+    restart: unless-stopped
+    volumes:
+      - whisper-models:/home/ubuntu/.cache/huggingface/hub
 
   tailscale:
     profiles: ["tailscale"]
@@ -82,5 +97,6 @@ services:
 volumes:
   db-data:
   radicale-data:
+  whisper-models:
   tahgul-data:
   ts-state:

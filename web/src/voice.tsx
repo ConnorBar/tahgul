@@ -124,7 +124,9 @@ export function NoteCard({ note, showWhere }: { note: VoiceNote; showWhere?: boo
       ) : note.transcript_status === "pending" ? (
         <p className="note-transcript muted small">Transcribing…</p>
       ) : note.transcript_status === "failed" ? (
-        <p className="note-transcript error small">Transcription failed.</p>
+        <p className="note-transcript error small">
+          Transcription failed{note.transcript_error ? `: ${note.transcript_error}` : "."}
+        </p>
       ) : null}
       <div className="note-actions row small">
         <a href={note.download_url}>Download</a>

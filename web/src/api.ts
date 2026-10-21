@@ -566,6 +566,7 @@ export type VoiceNote = {
   transcript: string | null;
   transcript_source: "yog" | "whisper" | "owner" | null;
   transcript_status: "none" | "pending" | "done" | "failed";
+  transcript_error: string | null;
   yog_id: string | null;
   source: string;
   playback_url: string;

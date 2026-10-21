@@ -105,7 +105,7 @@ Scopes (hourly, fixed fee, monthly retainer) track burn against a budget and fla
 
 ## Ideas and voice notes
 
-An ideas inbox (ideas are projects in status `idea`) with voice notes: Yog, Shortcuts or `curl` upload audio to an idea, project or task; the web app plays it back with seeking and 1.5×/2×, and records in the browser. See [docs/voice-notes.md](docs/voice-notes.md).
+An ideas inbox (ideas are projects in status `idea`) with voice notes: Yog, Shortcuts or `curl` upload audio to an idea, project or task; the web app plays it back with seeking and 1.5×/2×, and records in the browser. Optional local Whisper transcription (`--profile whisper`). See [docs/voice-notes.md](docs/voice-notes.md).
 
 ## Rates
 
