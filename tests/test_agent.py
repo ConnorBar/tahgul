@@ -257,3 +257,11 @@ def test_promote_idea(agent):
     assert p["status"] == "active" and p["client_id"] == clients[0]["id"]
     assert c.get(f"{API}/ideas").json() == []
     assert c.post(f"{API}/ideas/{idea['id']}/promote", json={}).status_code == 409
+
+
+def test_quick_voice_phrasing(agent):
+    r = quick(agent["bot"], "Fix VPN for Acme tomorrow, high priority")
+    assert r["action"] == "task_created"
+    assert (r["task"]["title"], r["task"]["priority"]) == ("Fix VPN", "high")
+    r = quick(agent["bot"], "Call Laura for Acme Thursday at 2pm")
+    assert r["task"]["due_time"] == "14:00:00" and r["task"]["project_name"] == "Network audit"

@@ -102,3 +102,10 @@ def test_priority(bang, prio):
 
 def test_only_tokens_keeps_original_text_as_title():
     assert p("#ops tomorrow").title == "#ops tomorrow"
+
+
+def test_spoken_priority():
+    r = p("Fix VPN for Acme tomorrow, high priority")
+    assert (r.title, r.priority, r.project_id) == ("Fix VPN", "high", "p-audit")
+    assert p("priority urgent call the bank").priority == "urgent"
+    assert p("Review priority list").title == "Review priority list"

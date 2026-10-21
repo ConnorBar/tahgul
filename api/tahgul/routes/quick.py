@@ -55,6 +55,7 @@ class QuickIn(BaseModel):
     project_id: uuid.UUID | None = Field(
         None, description="Use this project (e.g. after a needs_confirmation answer)"
     )
+    project: str | None = Field(None, description="Same, by project or client name")
     dry_run: bool = False
 
 
@@ -109,6 +110,8 @@ PARTS_OF_DAY = {"morning": time(9), "afternoon": time(13), "evening": time(18), 
 
 
 def _hours_words(seconds: int) -> str:
+    if seconds < 60:
+        return "less than a minute"
     m = round(seconds / 60)
     h, m = divmod(m, 60)
     parts = []
@@ -213,6 +216,8 @@ def quick(
     """Natural-language-lite: tasks, timers, time, ideas and quick answers from one sentence."""
     forced = get_live(db, Project, body.project_id, "project") if body.project_id else None
     ws = resolve_workspace(db, body.workspace_id or (forced and forced.workspace_id))
+    if forced is None and body.project:
+        forced = lookup.find_project(db, ws.id, body.project)
     zone = tk.tz(ws)
     now_local = datetime.now(zone)
     today = now_local.date()
