@@ -1,5 +1,6 @@
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { ApiError, api, post, type Me } from "./api";
 import CalendarPage from "./pages/CalendarPage";
 import Clients from "./pages/Clients";
@@ -76,10 +77,11 @@ function Shell({ me }: { me: Me }) {
           <NavLink to="/reports">Reports</NavLink>
           <NavLink to="/settings">Settings</NavLink>
         </nav>
-        <button className="ghost" onClick={() => logout.mutate()} disabled={logout.isPending}>
+        <button className="ghost signout" onClick={() => logout.mutate()} disabled={logout.isPending}>
           Sign out
         </button>
       </header>
+      <TabBar onSignOut={() => logout.mutate()} />
       <LongTimerPrompt />
       <main>
         <Routes>
@@ -99,5 +101,68 @@ function Shell({ me }: { me: Me }) {
         </Routes>
       </main>
     </div>
+  );
+}
+
+const ICONS: Record<string, string> = {
+  today: "M4 11.5 12 5l8 6.5V20h-5v-5H9v5H4z",
+  tasks: "M5 5h14v14H5zM8.5 12l2.5 2.5L15.5 10",
+  time: "M12 4a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM12 8v4.5l3 2",
+  calendar: "M5 6h14v13H5zM5 10h14M9 4v4M15 4v4",
+  more: "M6 12h.01M12 12h.01M18 12h.01",
+};
+
+function Icon({ name }: { name: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none"
+      stroke="currentColor" strokeWidth={name === "more" ? 3.2 : 1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d={ICONS[name]} />
+    </svg>
+  );
+}
+
+/** Phone navigation: the four daily screens, everything else under More. */
+function TabBar({ onSignOut }: { onSignOut: () => void }) {
+  const [more, setMore] = useState(false);
+  const location = useLocation();
+  useEffect(() => setMore(false), [location.pathname]);
+  const tabs: [string, string, string][] = [
+    ["/", "today", "Today"],
+    ["/tasks", "tasks", "Tasks"],
+    ["/time", "time", "Time"],
+    ["/calendar", "calendar", "Calendar"],
+  ];
+  return (
+    <>
+      {more && <div className="sheet-backdrop" onClick={() => setMore(false)} />}
+      {more && (
+        <nav className="sheet" aria-label="More">
+          {[
+            ["/projects", "Projects"],
+            ["/ideas", "Ideas"],
+            ["/clients", "Clients"],
+            ["/invoices", "Invoices"],
+            ["/reports", "Reports"],
+            ["/settings", "Settings"],
+          ].map(([to, label]) => (
+            <NavLink key={to} to={to}>{label}</NavLink>
+          ))}
+          <button className="linkish" onClick={onSignOut}>Sign out</button>
+        </nav>
+      )}
+      <nav className="tabbar" aria-label="Main">
+        {tabs.map(([to, icon, label]) => (
+          <NavLink key={to} to={to} end={to === "/"}>
+            <Icon name={icon} />
+            <span>{label}</span>
+          </NavLink>
+        ))}
+        <button type="button" className={more ? "active" : undefined} aria-expanded={more}
+          onClick={() => setMore((m) => !m)}>
+          <Icon name="more" />
+          <span>More</span>
+        </button>
+      </nav>
+    </>
   );
 }

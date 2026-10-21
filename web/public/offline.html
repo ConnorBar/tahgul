@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tahgul is out of reach</title>
+<style>
+  :root { --bg: #f6f5f1; --text: #1d1f22; --muted: #6a6e74; --accent: #2f5d50; --on: #fff; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #16181b; --text: #e8e6e1; --muted: #9a9ea4; --accent: #6fb39c; --on: #0f1a16; } }
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: var(--bg); color: var(--text);
+         font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 1.5rem; box-sizing: border-box; }
+  main { max-width: 22rem; text-align: center; }
+  img { width: 64px; height: 64px; border-radius: 14px; }
+  h1 { font-size: 1.3rem; margin: 1rem 0 0.5rem; }
+  p { color: var(--muted); margin: 0 0 1.25rem; }
+  button { font: inherit; padding: 0.6rem 1.2rem; border-radius: 8px; border: 0; background: var(--accent); color: var(--on); }
+</style>
+</head>
+<body>
+<main>
+  <img src="/icon-192.png" alt="">
+  <h1>Can't reach Tahgul</h1>
+  <p>Is Tailscale on? Tahgul only answers on your tailnet. If it is, the server may be restarting.</p>
+  <button onclick="location.reload()">Try again</button>
+</main>
+</body>
+</html>

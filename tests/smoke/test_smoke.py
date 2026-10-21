@@ -91,9 +91,9 @@ def test_calendar_renders(page):
 
 def test_invoice_draft_issue_pdf(page):
     page.goto(URL + "/invoices")
-    page.get_by_role("button", name="New invoice").click()
+    # The first client under "Ready to bill", so a re-run still has time to invoice.
+    page.get_by_role("button", name="Draft invoice").first.click()
     dialog = page.get_by_role("dialog")
-    dialog.get_by_label("Client").select_option(label="Acme Farms")
     dialog.get_by_label("Work from").fill("2020-01-01")
     dialog.get_by_role("button", name="Create draft").click()
     expect(page.get_by_role("heading", name=re.compile("Draft invoice"))).to_be_visible()

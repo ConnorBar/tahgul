@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import {
@@ -98,6 +98,7 @@ export default function Tasks() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["views"] }); setView("open"); },
   });
 
+  const [showFilters, setShowFilters] = useState(false);
   const activeName = builtIn?.name ?? savedView?.name ?? "Custom filter";
   const list = useMemo(() => tasks.data ?? [], [tasks.data]);
 
@@ -139,7 +140,11 @@ export default function Tasks() {
         ))}
       </div>
 
-      <div className="filters row">
+      <button className="ghost filters-toggle" aria-expanded={showFilters}
+        onClick={() => setShowFilters((v) => !v)}>
+        {showFilters ? "Hide filters" : "Filters"}
+      </button>
+      <div className={`filters row${showFilters ? "" : " collapsed"}`}>
         <input type="search" placeholder="Search" aria-label="Search tasks" defaultValue={filters.q ?? ""}
           key={`q-${viewKey}`} onKeyDown={(e) => e.key === "Enter" && setFilter({ q: (e.target as HTMLInputElement).value })} />
         <select aria-label="Client" value={filters.client ?? ""} onChange={(e) => setFilter({ client: e.target.value })}>
