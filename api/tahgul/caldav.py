@@ -45,6 +45,7 @@ class RemoteCalendar:
     writable: bool
     sync_token: str | None
     supports_events: bool = True
+    supports_todos: bool = True
 
 
 @dataclass
@@ -192,9 +193,11 @@ class CalDAVClient:
                 continue
             href = self._abs(resp.findtext("d:href", "", NS))
             comps = props.get(_q("c:supported-calendar-component-set"))
-            supports_events = comps is None or any(
-                c.get("name") == "VEVENT" for c in comps.findall("c:comp", NS)
+            names = (
+                {c.get("name") for c in comps.findall("c:comp", NS)} if comps is not None else None
             )
+            supports_events = names is None or "VEVENT" in names
+            supports_todos = names is None or "VTODO" in names
             privs = props.get(_q("d:current-user-privilege-set"))
             writable = privs is None or any(
                 p.find(t, NS) is not None
@@ -216,17 +219,25 @@ class CalDAVClient:
                     writable=writable,
                     sync_token=token.text if token is not None else None,
                     supports_events=supports_events,
+                    supports_todos=supports_todos,
                 )
             )
         return out
 
-    def make_calendar(self, home_url: str, slug: str, name: str, colour: str | None = None) -> str:
+    def make_calendar(
+        self,
+        home_url: str,
+        slug: str,
+        name: str,
+        colour: str | None = None,
+        component: str = "VEVENT",
+    ) -> str:
         """MKCALENDAR in the calendar home; returns the new calendar's URL."""
         url = urljoin(home_url if home_url.endswith("/") else home_url + "/", slug + "/")
         colour_xml = f"<ic:calendar-color>{colour}</ic:calendar-color>" if colour else ""
         body = f"""<c:mkcalendar xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"
   xmlns:ic="http://apple.com/ns/ical/"><d:set><d:prop><d:displayname>{name}</d:displayname>
-  {colour_xml}<c:supported-calendar-component-set><c:comp name="VEVENT"/>
+  {colour_xml}<c:supported-calendar-component-set><c:comp name="{component}"/>
   </c:supported-calendar-component-set></d:prop></d:set></c:mkcalendar>"""
         r = self._request("MKCALENDAR", url, body=_xml(body))
         if r.status_code not in (201, 200):

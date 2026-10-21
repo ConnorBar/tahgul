@@ -55,6 +55,7 @@ services:
       # Transcription: start the stack with --profile whisper and set this to
       # http://whisper:8000 in deploy/.env (or point it at any OpenAI-compatible server).
       TAHGUL_PUBLIC_REPORT_URL: ${TAHGUL_PUBLIC_REPORT_URL:-}
+      TAHGUL_APP_URL: ${TAHGUL_APP_URL:-}
       TAHGUL_WHISPER_URL: ${TAHGUL_WHISPER_URL:-}
       TAHGUL_WHISPER_MODEL: ${TAHGUL_WHISPER_MODEL:-Systran/faster-whisper-small}
       TAHGUL_WHISPER_LANGUAGE: ${TAHGUL_WHISPER_LANGUAGE:-}

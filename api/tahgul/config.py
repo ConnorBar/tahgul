@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     whisper_model: str = "Systran/faster-whisper-small"
     whisper_language: str | None = None
 
+    # The app's own address (https://tahgul.<tailnet>.ts.net), for links in reminders.
+    app_url: str | None = None
+
     # Client report links: the public base URL they're shared under, e.g. the Tailscale
     # Funnel address https://tahgul.<tailnet>.ts.net:10000. Unset = same as the app.
     public_report_url: str | None = None
