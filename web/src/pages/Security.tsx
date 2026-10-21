@@ -7,11 +7,10 @@ type Setup = { secret: string; otpauth_uri: string };
 
 export default function Security({ me }: { me: Me }) {
   return (
-    <section className="page">
-      <h1>Security</h1>
+    <>
       <TwoFactor enabled={!!me.totp_enabled} />
       <ChangePassword />
-    </section>
+    </>
   );
 }
 

@@ -68,5 +68,9 @@ tests/    pytest
 ## Auth model
 
 - **Owner** signs in with email + password, plus TOTP once turned on (Settings → Security). The session lives in a secure, HTTP-only, `SameSite=Strict` cookie; cookie-authenticated writes also need an `X-Requested-With: tahgul` header.
-- **API tokens** (Settings → API tokens) are one per client, scoped `read` / `write` / `invoice`, stored as SHA-256 hashes, shown once and revocable. Send them as `Authorization: Bearer thg_…`. Tokens can never manage tokens or security settings.
+- **API tokens** (Settings → API tokens) are one per client, scoped `read` / `write` / `invoice` / `admin`, stored as SHA-256 hashes, shown once and revocable. Send them as `Authorization: Bearer thg_…`. Deleting records and changing rates need `admin`; tokens can never manage tokens or security settings.
 - Every write lands in `audit_log` with who made it.
+
+## Rates
+
+The rate for a piece of work is the most specific one set: time-entry override → activity → scope → project → client → workspace default. `GET /api/v1/projects/{id}/rate?activity_id=` shows the answer and every level behind it. A rate of 0 counts as set (pro bono).

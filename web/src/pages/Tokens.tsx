@@ -8,6 +8,7 @@ const SCOPE_HELP: Record<string, string> = {
   read: "See everything",
   write: "Create and change tasks, time and events",
   invoice: "Draft and manage invoices",
+  admin: "Delete records and change rates",
 };
 
 export default function Tokens() {
@@ -43,8 +44,7 @@ export default function Tokens() {
   };
 
   return (
-    <section className="page">
-      <h1>API tokens</h1>
+    <>
       <p className="muted">
         One token per client (Siri, the agent, scripts). Send it as{" "}
         <code>Authorization: Bearer …</code>. Tokens can't manage other tokens or security
@@ -147,6 +147,6 @@ export default function Tokens() {
           </div>
         )}
       </div>
-    </section>
+    </>
   );
 }
