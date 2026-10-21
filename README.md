@@ -79,6 +79,15 @@ tests/    pytest
 - **Reports:** `GET /api/v1/reports/summary?from=&to=&client=` gives hours, money, unbilled amount and effective rate by client, project and week, plus budget used across all time.
 - **Rounding** (e.g. up to 6 minutes) is a workspace setting applied when invoicing; logged time stays exact.
 
+## Tasks
+
+- Every project has a board; new projects start with To do / In progress / Done. Columns can be added, renamed, reordered, marked as "done" or deleted (their tasks move first).
+- Tasks have a short per-workspace number (`#12`, also `GET /api/v1/tasks/by-number/12`), type, priority, labels, due date and time, estimate, subtasks and blocked-by links (cycles are refused). `PATCH /tasks/{id}` takes a column name or id as `status`, or `done: true/false`.
+- Quick add understands `Fix VPN for Acme tomorrow !high #network`: `!priority`, `#label` (or `#project`/`#client` when the word matches one), `for Acme`/`@Acme`, dates like `fri`, `next monday`, `in 3 days`, `oct 30`, and times like `2pm`. A client with several open projects comes back as candidates instead of a guess. `POST /api/v1/tasks/quick` with `dry_run: true` previews.
+- Comments are Markdown; `GET /tasks/{id}/history` merges them with every change and who made it (you, an agent token, sync).
+- Saved views store task filters (`open`, `due_within_days`, `priority`, `client`, …) under `/api/v1/views`.
+- Timers and entries can point at a task (`task_id`), which sets the project.
+
 ## Rates
 
 The rate for a piece of work is the most specific one set: time-entry override → activity → scope → project → client → workspace default. `GET /api/v1/projects/{id}/rate?activity_id=` shows the answer and every level behind it. A rate of 0 counts as set (pro bono).

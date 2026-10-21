@@ -5,12 +5,20 @@ from sqlalchemy import create_engine, pool
 
 from tahgul.config import get_settings
 from tahgul.models import Base
+from tahgul.models.base import UTCDateTime
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
+
+
+def render_item(type_, obj, autogen_context):
+    """Write UTCDateTime columns as plain timestamptz so migrations don't import the app."""
+    if type_ == "type" and isinstance(obj, UTCDateTime):
+        return "sa.DateTime(timezone=True)"
+    return False
 
 
 def _url() -> str:
@@ -30,6 +38,7 @@ def run_migrations_online() -> None:
             connection=connection,
             target_metadata=target_metadata,
             render_as_batch=connection.dialect.name == "sqlite",
+            render_item=render_item,
         )
         with context.begin_transaction():
             context.run_migrations()

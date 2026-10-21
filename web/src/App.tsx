@@ -3,9 +3,11 @@ import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { ApiError, api, post, type Me } from "./api";
 import Clients from "./pages/Clients";
 import Login from "./pages/Login";
+import ProjectPage from "./pages/ProjectPage";
 import Projects from "./pages/Projects";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import Tasks from "./pages/Tasks";
 import Time from "./pages/Time";
 import Today from "./pages/Today";
 import { LongTimerPrompt, TimerBar } from "./timer";
@@ -61,6 +63,7 @@ function Shell({ me }: { me: Me }) {
         </div>
         <nav>
           <NavLink to="/" end>Today</NavLink>
+          <NavLink to="/tasks">Tasks</NavLink>
           <NavLink to="/time">Time</NavLink>
           <NavLink to="/projects">Projects</NavLink>
           <NavLink to="/clients">Clients</NavLink>
@@ -76,7 +79,9 @@ function Shell({ me }: { me: Me }) {
         <Routes>
           <Route path="/" element={<Today me={me} />} />
           <Route path="/time" element={<Time />} />
+          <Route path="/tasks" element={<Tasks />} />
           <Route path="/projects" element={<Projects />} />
+          <Route path="/projects/:id" element={<ProjectPage />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/clients" element={<Clients />} />
           <Route path="/settings/*" element={<Settings me={me} />} />

@@ -17,6 +17,7 @@ from tahgul.routes import (
     projects,
     reports,
     system,
+    tasks,
     time,
     timesheet,
     tokens,
@@ -61,6 +62,7 @@ def create_app() -> FastAPI:
     app.include_router(time.router)
     app.include_router(timesheet.router)
     app.include_router(reports.router)
+    app.include_router(tasks.router)
     _mount_web(app)
     return app
 

@@ -45,14 +45,19 @@ class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
 
 
+def _now() -> datetime:
+    return datetime.now(UTC)
+
+
 class RecordMixin:
     """Every record carries a UUID, timestamps and a soft-delete marker (SPEC: data model)."""
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    # Set in Python for microsecond precision everywhere (SQLite's clock is per second).
     created_at: Mapped[datetime] = mapped_column(
-        UTCDateTime(), server_default=func.now(), nullable=False
+        UTCDateTime(), default=_now, server_default=func.now(), nullable=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        UTCDateTime(), server_default=func.now(), onupdate=func.now(), nullable=False
+        UTCDateTime(), default=_now, server_default=func.now(), onupdate=_now, nullable=False
     )
     deleted_at: Mapped[datetime | None] = mapped_column(UTCDateTime(), nullable=True)

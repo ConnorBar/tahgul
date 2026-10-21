@@ -35,8 +35,8 @@ class TimeEntry(RecordMixin, Base):
     )
     project_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("projects.id"), index=True)
     activity_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("activities.id"))
-    # Tasks arrive in milestone 4, invoices in milestone 7; the foreign keys follow then.
-    task_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
+    task_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("tasks.id"), index=True)
+    # Invoices arrive in milestone 7; the foreign key follows then.
     invoice_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, index=True)
 
     start_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
@@ -58,6 +58,7 @@ class TimeEntry(RecordMixin, Base):
     workspace: Mapped[Workspace] = relationship()
     project: Mapped[Project | None] = relationship()
     activity: Mapped[Activity | None] = relationship()
+    task: Mapped["Task | None"] = relationship()  # noqa: F821 (string-resolved)
 
     @property
     def running(self) -> bool:
