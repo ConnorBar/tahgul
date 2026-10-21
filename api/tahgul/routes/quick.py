@@ -239,7 +239,7 @@ def quick(
         return QuickResult(
             action="timer_stopped",
             entry=e.model_dump(mode="json"),
-            speech=f"Stopped. {_hours_words(e.duration_seconds)}{where}.",
+            speech=f"Stopped. {_cap(_hours_words(e.duration_seconds))}{where}.",
         )
 
     # What's running
@@ -251,7 +251,7 @@ def quick(
         return QuickResult(
             action="status",
             entry=t.running.model_dump(mode="json"),
-            speech=f"{_hours_words(t.elapsed_seconds)} on {where}.",
+            speech=f"{_cap(_hours_words(t.elapsed_seconds))} on {where}.",
         )
 
     # Summary
