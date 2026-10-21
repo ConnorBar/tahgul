@@ -59,6 +59,19 @@ Files are written under `TAHGUL_DATA_DIR` (the `tahgul-data` volume, `/data` in 
 
 Deleting a task or project never deletes audio: a task's notes move up to its project, and a project's notes show under **Unfiled notes** in the ideas inbox. Deleting a voice note itself (owner, or a token with `admin`) removes the file.
 
+## Transcription (optional)
+
+Tahgul can transcribe notes with a local Whisper server; nothing leaves the homelab.
+
+1. In `deploy/.env` set `TAHGUL_WHISPER_URL=http://whisper:8000` (optionally `TAHGUL_WHISPER_MODEL`, default `Systran/faster-whisper-small`; `Systran/faster-whisper-tiny.en` is faster on a small CPU, `…-medium` is more accurate; and `TAHGUL_WHISPER_LANGUAGE=en` to skip language detection).
+2. Start the stack with the profile: `docker compose --profile whisper up -d`. This adds [speaches](https://github.com/speaches-ai/speaches) (faster-whisper with an OpenAI-compatible API) on the internal network only.
+
+New notes without a transcript are queued as soon as they're uploaded and picked up again every minute, so a restart or a Whisper outage only delays them. The first one downloads the model into the `whisper-models` volume. A transcript Yog sends, or one you type, is never overwritten by a late Whisper result; **Transcribe again** on a note replaces it on purpose. Failures show the reason on the note.
+
+Any server with `POST /v1/audio/transcriptions` works instead of speaches (whisper.cpp's server, or another box with a GPU): point `TAHGUL_WHISPER_URL` at it.
+
+Transcripts are searchable (`GET /api/v1/voice-notes?q=`) and readable by the agent's `voice_notes` tool, which is how "pull the to-dos out of this idea" works: the agent reads the transcript and calls `create_task` for each item.
+
 ## API
 
 | Method | Path | |
@@ -67,6 +80,7 @@ Deleting a task or project never deletes audio: a task's notes move up to its pr
 | GET | `/api/v1/voice-notes` | List: `project_id`, `task_id`, `unfiled`, `q` (title and transcript search) |
 | GET/PATCH/DELETE | `/api/v1/voice-notes/{id}` | Rename, edit transcript, move to another project/task |
 | GET | `/api/v1/voice-notes/{id}/audio` | The audio |
+| POST | `/api/v1/voice-notes/{id}/transcribe` | Queue (re)transcription; 409 if no Whisper server is configured |
 | GET/POST | `/api/v1/ideas` | The inbox (with note and to-do counts); create, optionally moving an existing note onto it with `voice_note_id` |
 | POST | `/api/v1/ideas/{id}/promote` | Make it a project |
 

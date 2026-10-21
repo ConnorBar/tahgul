@@ -12,6 +12,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     Form,
@@ -27,8 +28,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from tahgul import audio, audit, lookup
-from tahgul.config import get_settings
+from tahgul import audio, audit, lookup, transcribe
 from tahgul.crud import get_live, require_admin, resolve_workspace
 from tahgul.db import get_db
 from tahgul.deps import require_scope
@@ -81,6 +81,7 @@ class NoteOut(BaseModel):
     transcript: str | None
     transcript_source: str | None
     transcript_status: str
+    transcript_error: str | None
     yog_id: str | None
     source: str
     playback_url: str = ""
@@ -122,7 +123,7 @@ def _load(db: Session, note_id: uuid.UUID) -> VoiceNote:
 
 
 def _whisper_on() -> bool:
-    return bool(get_settings().whisper_url)
+    return transcribe.enabled()
 
 
 def _target(
@@ -157,6 +158,7 @@ def _limit_size(request: Request) -> None:
 @router.post("", response_model=NoteOut, status_code=201, dependencies=[Depends(_limit_size)])
 def upload(
     response: Response,
+    background: BackgroundTasks,
     file: UploadFile = File(description="m4a, mp3, wav, webm or ogg; up to 200 MB"),
     metadata: str | None = Form(None, description="JSON, see NoteMeta"),
     principal: Principal = Depends(require_scope("write")),
@@ -232,6 +234,8 @@ def upload(
         db.rollback()
         audio.remove(stored.path)
         raise
+    if n.transcript_status == "pending":
+        background.add_task(transcribe.run_pending)
     return _out(_load(db, n.id))
 
 
@@ -353,6 +357,7 @@ def update_note(
 @router.post("/{note_id}/transcribe", response_model=NoteOut)
 def queue_transcription(
     note_id: uuid.UUID,
+    background: BackgroundTasks,
     principal: Principal = Depends(require_scope("write")),
     db: Session = Depends(get_db),
 ):
@@ -363,6 +368,7 @@ def queue_transcription(
     n.transcript_status, n.transcript_error = "pending", None
     audit.record(db, principal, "transcribe", "voice_note", n.id, {})
     db.commit()
+    background.add_task(transcribe.run_pending)
     return _out(n)
 
 
