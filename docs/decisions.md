@@ -4,6 +4,7 @@ Answers to the open questions in [SPEC.md](SPEC.md), newest first.
 
 | Date | Question | Decision |
 | --- | --- | --- |
+| 2026-10-21 | Webhook delivery | Outbox in the database (written with the change, sent by a background thread, retried with backoff for ~9 hours), HMAC-SHA256 signatures over `timestamp.body`. Any http(s) URL is allowed, since receivers live on the LAN/tailnet; managing webhooks needs `admin`. |
 | 2026-10-21 | Whisper service | **speaches** (`ghcr.io/speaches-ai/speaches:latest-cpu`, faster-whisper) as an optional compose profile, called through the OpenAI transcription API so any compatible server can replace it. Default model `faster-whisper-small`. Tahgul asks speaches to download the model on first use. |
 | 2026-10-21 | Voice note with no target | Becomes a new idea in the inbox (titled from the note, or the time), so `curl -F file=@memo.m4a` just works. |
 | 2026-10-21 | Deleting work with audio | Deleting a task moves its notes to the project; deleting a project leaves its notes "unfiled" in the ideas inbox. Only deleting a note deletes audio, and that needs the owner or an `admin` token. |
