@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from tahgul import lookup
 from tahgul import timekeeping as tk
 from tahgul.crud import TwoPlaces, get_live, resolve_workspace
 from tahgul.db import get_db
@@ -100,17 +101,20 @@ class _Acc:
 @router.get("/summary", response_model=Summary, response_model_by_alias=True)
 def summary(
     workspace_id: uuid.UUID | None = None,
-    client: uuid.UUID | None = Query(None, alias="client", description="Client id"),
-    project: uuid.UUID | None = None,
+    client_ref: str | None = Query(None, alias="client", description="Client id or name"),
+    project_ref: str | None = Query(None, alias="project", description="Project id or name"),
     from_: date | None = Query(None, alias="from", description="Local date; default: Monday"),
     to: date | None = Query(None, description="Local date, inclusive; default: Sunday"),
     _: Principal = Depends(require_scope("read")),
     db: Session = Depends(get_db),
 ):
     """Hours, money and budget left for a date range."""
-    if client is not None:
-        workspace_id = workspace_id or get_live(db, Client, client, "client").workspace_id
+    as_id = lookup._as_uuid(client_ref) if client_ref else None
+    if as_id is not None:
+        workspace_id = workspace_id or get_live(db, Client, as_id, "client").workspace_id
     ws = resolve_workspace(db, workspace_id)
+    client = lookup.find_client(db, ws.id, client_ref).id if client_ref else None
+    project = lookup.find_project(db, ws.id, project_ref).id if project_ref else None
     zone = tk.tz(ws)
     today = datetime.now(zone).date()
     first = from_ or tk.week_start(today)

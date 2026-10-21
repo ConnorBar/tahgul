@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
-from tahgul import audit, quickadd
+from tahgul import audit, lookup, quickadd
 from tahgul import tasks_service as ts
 from tahgul.crud import apply_changes, get_live, patch_data, require_admin, resolve_workspace
 from tahgul.db import get_db
@@ -93,7 +93,9 @@ class TaskFields(BaseModel):
 
 
 class TaskIn(TaskFields):
-    project_id: uuid.UUID
+    workspace_id: uuid.UUID | None = None
+    project_id: uuid.UUID | None = None
+    project: str | None = Field(None, description="Project (or client) name, instead of an id")
     title: str = Field(min_length=1, max_length=300)
     status: str | None = Field(None, description="Column id or name; default the first column")
 
@@ -556,8 +558,13 @@ def create_task(
     db: Session = Depends(get_db),
 ):
     """Create a task (title, project, due, priority, labels)."""
-    project = get_live(db, Project, body.project_id, "project")
-    fields = body.model_dump(exclude={"project_id", "title", "status"})
+    if body.project_id is not None:
+        project = get_live(db, Project, body.project_id, "project")
+    elif body.project:
+        project = lookup.find_project(db, resolve_workspace(db, body.workspace_id).id, body.project)
+    else:
+        raise HTTPException(422, detail="project_required")
+    fields = body.model_dump(exclude={"workspace_id", "project_id", "project", "title", "status"})
     t = _create_task(db, principal, project, body.title, body.status, fields)
     db.commit()
     return out(db, _load(db, t.id))
@@ -566,8 +573,8 @@ def create_task(
 @router.get("/tasks", response_model=list[TaskOut])
 def list_tasks(
     workspace_id: uuid.UUID | None = None,
-    project_id: uuid.UUID | None = Query(None, alias="project"),
-    client_id: uuid.UUID | None = Query(None, alias="client"),
+    project_ref: str | None = Query(None, alias="project", description="Project id or name"),
+    client_ref: str | None = Query(None, alias="client", description="Client id or name"),
     status_: str | None = Query(None, alias="status", description="Column name"),
     open_: bool | None = Query(None, alias="open", description="true = not done"),
     due_before: date | None = Query(None, description="Due on or before"),
@@ -585,9 +592,12 @@ def list_tasks(
     db: Session = Depends(get_db),
 ):
     """Search and list tasks."""
-    if project_id is not None:
-        workspace_id = workspace_id or get_live(db, Project, project_id, "project").workspace_id
+    as_id = lookup._as_uuid(project_ref) if project_ref else None
+    if as_id is not None:
+        workspace_id = workspace_id or get_live(db, Project, as_id, "project").workspace_id
     ws = resolve_workspace(db, workspace_id)
+    project_id = lookup.find_project(db, ws.id, project_ref).id if project_ref else None
+    client_id = lookup.find_client(db, ws.id, client_ref).id if client_ref else None
     query = _task_q().join(Task.column).where(Task.workspace_id == ws.id, Task.deleted_at.is_(None))
     if project_id:
         query = query.where(Task.project_id == project_id)
@@ -942,18 +952,15 @@ def _targets(db: Session, ws_id: uuid.UUID) -> list[quickadd.Target]:
     ]
 
 
-@router.post("/tasks/quick", response_model=QuickOut)
-def quick_add_task(
-    body: QuickIn,
-    principal: Principal = Depends(require_scope("write")),
-    db: Session = Depends(get_db),
-):
-    """Quick add: "Fix VPN for Acme tomorrow !high #network". Use dry_run to preview."""
-    default_project = get_live(db, Project, body.project_id, "project") if body.project_id else None
-    ws = resolve_workspace(
-        db, body.workspace_id or (default_project and default_project.workspace_id)
-    )
-    parsed = quickadd.parse(body.text, _today(db, ws.id), _targets(db, ws.id))
+def quick_task(
+    db: Session,
+    principal: Principal,
+    text: str,
+    ws_id: uuid.UUID,
+    default_project: Project | None,
+    dry_run: bool,
+) -> QuickOut:
+    parsed = quickadd.parse(text, _today(db, ws_id), _targets(db, ws_id))
     project_id = parsed.project_id or (
         str(default_project.id) if default_project and not parsed.client_id else None
     )
@@ -978,7 +985,7 @@ def quick_add_task(
         needs_confirmation=project is None,
         candidates=candidates if project is None else [],
     )
-    if body.dry_run or project is None:
+    if dry_run or project is None:
         return result
     fields = {
         "priority": parsed.priority,
@@ -990,6 +997,20 @@ def quick_add_task(
     db.commit()
     result.task = out(db, _load(db, t.id))
     return result
+
+
+@router.post("/tasks/quick", response_model=QuickOut)
+def quick_add_task(
+    body: QuickIn,
+    principal: Principal = Depends(require_scope("write")),
+    db: Session = Depends(get_db),
+):
+    """Quick add: "Fix VPN for Acme tomorrow !high #network". Use dry_run to preview."""
+    default_project = get_live(db, Project, body.project_id, "project") if body.project_id else None
+    ws = resolve_workspace(
+        db, body.workspace_id or (default_project and default_project.workspace_id)
+    )
+    return quick_task(db, principal, body.text, ws.id, default_project, body.dry_run)
 
 
 # --- Saved views -----------------------------------------------------------------------

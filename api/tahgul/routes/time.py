@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from tahgul import audit
+from tahgul import audit, lookup
 from tahgul import timekeeping as tk
 from tahgul.crud import (
     RateIn,
@@ -75,7 +75,9 @@ class EntryFields(BaseModel):
 
     task_id: uuid.UUID | None = Field(None, description="Sets the project too")
     project_id: uuid.UUID | None = None
+    project: str | None = Field(None, description="Project (or client) name, instead of an id")
     activity_id: uuid.UUID | None = None
+    activity: str | None = Field(None, description="Activity name, instead of an id")
     notes: str | None = Field(None, max_length=5000)
     billable: bool | None = Field(None, description="Defaults to the activity's setting.")
     rate_override: RateIn | None = None
@@ -176,6 +178,18 @@ def out(e: TimeEntry, overlaps: list[TimeEntry] | None = None) -> TimeEntryOut:
     return o
 
 
+def _names(db: Session, body: BaseModel, workspace_id: uuid.UUID | None) -> tuple:
+    """project_id and activity_id, resolving names the caller gave instead of ids."""
+    project_id, activity_id = body.project_id, body.activity_id
+    if (body.project and not project_id) or (body.activity and not activity_id):
+        ws_id = resolve_workspace(db, workspace_id).id
+        if body.project and not project_id:
+            project_id = lookup.find_project(db, ws_id, body.project).id
+        if body.activity and not activity_id:
+            activity_id = lookup.find_activity(db, ws_id, body.activity).id
+    return project_id, activity_id
+
+
 def _task_project(db: Session, task_id, project_id):
     """A task implies its project; a project given alongside must match."""
     if not task_id:
@@ -256,8 +270,9 @@ def start_timer(
 ):
     """Start the timer. A timer already running is stopped first (one at a time)."""
     guard_rate_fields(principal, body.model_dump(exclude_none=True), RATE_FIELDS)
-    task, project_id = _task_project(db, body.task_id, body.project_id)
-    ws, project, activity = _refs(db, body.workspace_id, project_id, body.activity_id)
+    project_id, activity_id = _names(db, body, body.workspace_id)
+    task, project_id = _task_project(db, body.task_id, project_id)
+    ws, project, activity = _refs(db, body.workspace_id, project_id, activity_id)
     now = utcnow()
     start = as_utc(tk.ensure_aware(body.start_at, tk.tz(ws))) if body.start_at else now
     if start > now + timedelta(minutes=1):
@@ -394,8 +409,9 @@ def create_entry(
 ):
     """Log time after the fact, e.g. two hours on Acme yesterday afternoon."""
     guard_rate_fields(principal, body.model_dump(exclude_none=True), RATE_FIELDS)
-    task, project_id = _task_project(db, body.task_id, body.project_id)
-    ws, project, activity = _refs(db, body.workspace_id, project_id, body.activity_id)
+    project_id, activity_id = _names(db, body, body.workspace_id)
+    task, project_id = _task_project(db, body.task_id, project_id)
+    ws, project, activity = _refs(db, body.workspace_id, project_id, activity_id)
     zone = tk.tz(ws)
     start = as_utc(tk.ensure_aware(body.start_at, zone))
     end = (
@@ -443,6 +459,12 @@ def get_entry(
 def _apply_patch(db: Session, e: TimeEntry, body: BaseModel, principal: Principal) -> TimeEntry:
     data = patch_data(body, {"task_id", "project_id", "activity_id", "notes", "rate_override"})
     guard_rate_fields(principal, data, RATE_FIELDS)
+    if data.get("project") and "project_id" not in data:
+        data["project_id"] = lookup.find_project(db, e.workspace_id, data["project"]).id
+    if data.get("activity") and "activity_id" not in data:
+        data["activity_id"] = lookup.find_activity(db, e.workspace_id, data["activity"]).id
+    data.pop("project", None)
+    data.pop("activity", None)
     if "end_at" in data and e.running:
         raise HTTPException(422, detail="use_timer_stop")
     task = None
