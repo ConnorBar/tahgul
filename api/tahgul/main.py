@@ -10,11 +10,14 @@ from tahgul import __version__
 from tahgul.bootstrap import bootstrap_owner_from_env
 from tahgul.config import get_settings
 from tahgul.db import get_sessionmaker
+from tahgul.idempotency import IdempotencyMiddleware
 from tahgul.routes import (
     activities,
     auth,
     clients,
+    ideas,
     projects,
+    quick,
     reports,
     system,
     tasks,
@@ -52,6 +55,7 @@ def create_app() -> FastAPI:
         openapi_url="/api/openapi.json",
         lifespan=lifespan,
     )
+    app.add_middleware(IdempotencyMiddleware)
     app.include_router(system.router)
     app.include_router(auth.router)
     app.include_router(tokens.router)
@@ -63,6 +67,8 @@ def create_app() -> FastAPI:
     app.include_router(timesheet.router)
     app.include_router(reports.router)
     app.include_router(tasks.router)
+    app.include_router(ideas.router)
+    app.include_router(quick.router)
     _mount_web(app)
     return app
 

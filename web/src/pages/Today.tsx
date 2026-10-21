@@ -58,8 +58,8 @@ export default function Today({ me }: { me: Me }) {
       <div className="card">
         <h2>Coming next</h2>
         <p className="muted">
-          The Siri and agent API arrive next, then calendar sync, invoicing and voice notes.
-          The full API is documented at <a href="/api/docs">/api/docs</a>.
+          Calendar sync arrives next, then invoicing and voice notes. Siri and agent setup is
+          in the repo's docs; the full API is at <a href="/api/docs">/api/docs</a>.
         </p>
       </div>
     </section>

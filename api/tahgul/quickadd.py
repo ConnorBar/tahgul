@@ -2,10 +2,10 @@
 
 What it understands:
 
-* ``!urgent`` ``!high`` ``!medium`` ``!low``  → priority
+* ``!urgent`` ``!high`` ``!medium`` ``!low``, or "high priority"  → priority
 * ``#word`` → a project or client when the word matches one, otherwise a label
 * ``for Acme`` / ``@Acme`` → a project or client, only when the name matches
-* dates: today, tonight, tomorrow, weekday names ("fri", "next monday"), "in 3 days",
+* dates: today, tonight, tomorrow, yesterday, weekday names ("fri", "next monday"), "in 3 days",
   "next week", "oct 30", "30 oct", "10/30", "2026-10-30"
 * times: "2pm", "2:30pm", "14:00", "at 3", "noon"
 
@@ -31,6 +31,14 @@ PRIORITY_WORDS = {
     "low": "low",
     "l": "low",
     "4": "low",
+}
+SPOKEN_PRIORITY = {
+    "urgent": "urgent",
+    "high": "high",
+    "medium": "medium",
+    "low": "low",
+    "top": "urgent",
+    "normal": "medium",
 }
 WEEKDAYS = {
     "monday": 0,
@@ -178,10 +186,18 @@ def parse(text: str, today: date, targets: list[Target]) -> Parsed:
         nxt = tokens[i + 1].lower().rstrip(",.;") if i + 1 < len(tokens) else None
         nxt2 = tokens[i + 2].lower().rstrip(",.;") if i + 2 < len(tokens) else None
 
-        # Priority
+        # Priority: "!high", or spoken "high priority" / "priority high"
         if low.startswith("!") and low[1:] in PRIORITY_WORDS:
             out.priority = PRIORITY_WORDS[low[1:]]
             i += 1
+            continue
+        if low in SPOKEN_PRIORITY and nxt == "priority":
+            out.priority = SPOKEN_PRIORITY[low]
+            i += 2
+            continue
+        if low == "priority" and nxt in SPOKEN_PRIORITY:
+            out.priority = SPOKEN_PRIORITY[nxt]
+            i += 2
             continue
         # #label or #project
         if low.startswith("#") and len(low) > 1:
@@ -222,6 +238,8 @@ def parse(text: str, today: date, targets: list[Target]) -> Parsed:
                 out.due_time = time(20, 0)
         elif low in ("tomorrow", "tmrw", "tmr", "tom"):
             d, used = today + timedelta(days=1), 1
+        elif low == "yesterday":
+            d, used = today - timedelta(days=1), 1
         elif low in WEEKDAYS:
             d, used = _next_weekday(today, WEEKDAYS[low], False), 1
         elif low == "next" and nxt in WEEKDAYS:
