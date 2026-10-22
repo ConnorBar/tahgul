@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, del, errorMessage, patch, post, type CalendarAccount, type Project } from "./api";
 import { useWorkspace } from "./workspace";
+import { Select } from "./Select";
 
 type ReminderList = {
   id: string;
@@ -93,18 +94,18 @@ export function RemindersSettings({ accounts }: { accounts: CalendarAccount[] })
           <div className="grid-2">
             <label>
               Which tasks
-              <select value={l.include} onChange={(e) => update.mutate({ id: l.id, body: { include: e.target.value as "due" | "open" } })}>
+              <Select value={l.include} onChange={(e) => update.mutate({ id: l.id, body: { include: e.target.value as "due" | "open" } })}>
                 <option value="due">Open tasks with a due date</option>
                 <option value="open">Every open task</option>
-              </select>
+              </Select>
             </label>
             <label>
               New reminders from the phone go to
-              <select value={l.inbox_project_id ?? ""}
+              <Select value={l.inbox_project_id ?? ""}
                 onChange={(e) => update.mutate({ id: l.id, body: { inbox_project_id: e.target.value || null } })}>
                 <option value="">Nowhere (leave them on the phone)</option>
                 {usable.map((p) => <option key={p.id} value={p.id}>{p.name}{p.client_name ? ` · ${p.client_name}` : ""}</option>)}
-              </select>
+              </Select>
             </label>
           </div>
         </div>
@@ -114,14 +115,14 @@ export function RemindersSettings({ accounts }: { accounts: CalendarAccount[] })
       ) : (
         <div className="row reminder-add">
           {accounts.length > 1 && (
-            <select aria-label="Account" value={account} onChange={(e) => { setAccountId(e.target.value); setExisting(""); }}>
+            <Select aria-label="Account" value={account} onChange={(e) => { setAccountId(e.target.value); setExisting(""); }}>
               {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-            </select>
+            </Select>
           )}
-          <select aria-label="List" value={existing} onChange={(e) => setExisting(e.target.value)}>
+          <Select aria-label="List" value={existing} onChange={(e) => setExisting(e.target.value)}>
             <option value="">Make a new “Tahgul” list</option>
             {remote.data?.filter((r) => !r.in_use).map((r) => <option key={r.url} value={r.url}>Use “{r.name}”</option>)}
-          </select>
+          </Select>
           <button onClick={() => create.mutate()} disabled={create.isPending || !account}>
             {create.isPending ? "Setting up…" : "Add to Reminders"}
           </button>

@@ -18,6 +18,7 @@ import {
 } from "../api";
 import { Dialog, Empty, addDays, dayLabel, hoursLabel, money, orNull, str, todayIn } from "../ui";
 import { useWorkspace } from "../workspace";
+import { Select } from "../Select";
 
 const STATUS_LABEL: Record<InvoiceStatus, string> = {
   draft: "Draft",
@@ -109,7 +110,7 @@ export default function Invoices() {
           <h2 className="group-title">Ready to bill</h2>
           <div className="card flush">
             <div className="table-wrap">
-              <table>
+              <table className="ready">
                 <tbody>
                   {unbilled.data.map((u) => (
                     <tr key={u.client_id}>
@@ -134,12 +135,12 @@ export default function Invoices() {
         <div className="row">
           <h2 className="group-title">All invoices</h2>
           <span className="spacer" />
-          <select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value as InvoiceStatus | "")}>
+          <Select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value as InvoiceStatus | "")}>
             <option value="">Any status</option>
             {(Object.keys(STATUS_LABEL) as InvoiceStatus[]).map((s) => (
               <option key={s} value={s}>{STATUS_LABEL[s]}</option>
             ))}
-          </select>
+          </Select>
         </div>
         {invoices.data?.length === 0 && (
           <Empty>No invoices{status ? ` marked ${STATUS_LABEL[status].toLowerCase()}` : " yet"}.</Empty>
@@ -222,11 +223,11 @@ function NewInvoice({ clientId, unbilled, onDone }: {
     <form onSubmit={(e: FormEvent) => { e.preventDefault(); create.mutate(); }}>
       <label>
         Client
-        <select value={f.client_id} required
+        <Select value={f.client_id} required
           onChange={(e) => setF((c) => ({ ...c, client_id: e.target.value, ...pick(e.target.value) }))}>
           <option value="" disabled>Pick a client</option>
           {clients.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        </Select>
       </label>
       <div className="grid-2">
         <label>
@@ -247,9 +248,9 @@ function NewInvoice({ clientId, unbilled, onDone }: {
       </div>
       <label>
         Lines
-        <select value={f.group_by} onChange={set("group_by")}>
+        <Select value={f.group_by} onChange={set("group_by")}>
           {INVOICE_GROUPINGS.map((g) => <option key={g} value={g}>{GROUP_LABEL[g]}</option>)}
-        </select>
+        </Select>
       </label>
       <p className="muted small">
         Pulls in billable time not yet invoiced, finished fixed-fee scopes and retainer months.
@@ -429,9 +430,9 @@ function InvoiceMeta({ inv, onSaved }: { inv: Invoice; onSaved: (i: Invoice) => 
         </label>
         <label>
           Lines
-          <select value={f.group_by} onChange={(e) => { setF((c) => ({ ...c, group_by: e.target.value })); save.mutate({ group_by: e.target.value }); }}>
+          <Select value={f.group_by} onChange={(e) => { setF((c) => ({ ...c, group_by: e.target.value })); save.mutate({ group_by: e.target.value }); }}>
             {INVOICE_GROUPINGS.map((g) => <option key={g} value={g}>{GROUP_LABEL[g]}</option>)}
-          </select>
+          </Select>
         </label>
         <label>
           Issue date
@@ -555,11 +556,11 @@ function ManualLine({ invoiceId, currency, onDone }: { invoiceId: string; curren
       <input aria-label="Description" placeholder="Hardware: 2× Raspberry Pi kits" value={f.description}
         onChange={set("description")} required autoFocus />
       <input aria-label="Quantity" inputMode="decimal" value={f.quantity} onChange={set("quantity")} required />
-      <select aria-label="Unit" value={f.unit} onChange={set("unit")}>
+      <Select aria-label="Unit" value={f.unit} onChange={set("unit")}>
         <option value="item">item</option>
         <option value="hours">hours</option>
         <option value="month">month</option>
-      </select>
+      </Select>
       <input aria-label={`Price (${currency})`} inputMode="decimal" placeholder={`Price (${currency}), − for a discount`}
         value={f.unit_price} onChange={set("unit_price")} required />
       <button disabled={add.isPending}>Add</button>

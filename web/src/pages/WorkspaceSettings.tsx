@@ -11,6 +11,7 @@ import {
 } from "../api";
 import { Dialog, orNull, str } from "../ui";
 import { useWorkspace } from "../workspace";
+import { Select } from "../Select";
 
 const TIMEZONES = [
   "America/Chicago",
@@ -162,22 +163,22 @@ function WorkspaceForm({ ws }: { ws: Workspace }) {
         <div className="grid-3">
           <label>
             Round billed time to
-            <select aria-label="Round billed time to" value={f.rounding_minutes}
+            <Select aria-label="Round billed time to" value={f.rounding_minutes}
               onChange={set("rounding_minutes")}>
               <option value="0">No rounding</option>
               {[1, 5, 6, 10, 15, 30, 60].map((m) => (
                 <option key={m} value={m}>{m} minutes</option>
               ))}
-            </select>
+            </Select>
           </label>
           <label>
             Rounding
-            <select aria-label="Rounding" value={f.rounding_mode} onChange={set("rounding_mode")}
+            <Select aria-label="Rounding" value={f.rounding_mode} onChange={set("rounding_mode")}
               disabled={f.rounding_minutes === "0"}>
               <option value="up">Up</option>
               <option value="nearest">Nearest</option>
               <option value="down">Down</option>
-            </select>
+            </Select>
           </label>
           <label>
             Warn after timer runs (h)

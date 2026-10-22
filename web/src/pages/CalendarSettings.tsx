@@ -11,6 +11,7 @@ import {
 } from "../api";
 import { RemindersSettings } from "../reminders";
 import { Dialog, Empty } from "../ui";
+import { Select } from "../Select";
 
 export default function CalendarSettings() {
   const qc = useQueryClient();
@@ -162,11 +163,11 @@ function AddAccount({ onDone }: { onDone: () => void }) {
     <form onSubmit={(e: FormEvent) => { e.preventDefault(); add.mutate(); }}>
       <label>
         Server
-        <select aria-label="Server" value={f.kind} onChange={set("kind")}>
+        <Select aria-label="Server" value={f.kind} onChange={set("kind")}>
           <option value="radicale">Radicale (self-hosted)</option>
           <option value="icloud">iCloud</option>
           <option value="caldav">Other CalDAV server</option>
-        </select>
+        </Select>
       </label>
       {f.kind !== "icloud" && (
         <label>

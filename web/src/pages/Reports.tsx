@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api, type Client, type Summary } from "../api";
 import { Empty, addDays, dayLabel, hoursLabel, money, todayIn } from "../ui";
 import { useWorkspace } from "../workspace";
+import { Select } from "../Select";
 
 type Range = "this-week" | "last-week" | "this-month" | "last-month" | "this-year" | "custom";
 
@@ -56,18 +57,18 @@ export default function Reports() {
       <div className="page-head">
         <h1>Reports</h1>
         <div className="row">
-          <select aria-label="Date range" value={range} onChange={(e) => setRange(e.target.value as Range)}>
+          <Select aria-label="Date range" value={range} onChange={(e) => setRange(e.target.value as Range)}>
             <option value="this-week">This week</option>
             <option value="last-week">Last week</option>
             <option value="this-month">This month</option>
             <option value="last-month">Last month</option>
             <option value="this-year">This year</option>
             <option value="custom">Custom…</option>
-          </select>
-          <select aria-label="Client" value={client} onChange={(e) => setClient(e.target.value)}>
+          </Select>
+          <Select aria-label="Client" value={client} onChange={(e) => setClient(e.target.value)}>
             <option value="">All clients</option>
             {clients.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </div>
       </div>
       {range === "custom" && (

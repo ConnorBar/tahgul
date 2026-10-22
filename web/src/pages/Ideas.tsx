@@ -5,6 +5,7 @@ import { api, errorMessage, post, type Client, type Idea, type Project } from ".
 import { Dialog, Empty } from "../ui";
 import { AddVoiceNote, VoiceNotes, useVoiceInvalidation, useVoiceNotes } from "../voice";
 import { useWorkspace } from "../workspace";
+import { Select } from "../Select";
 
 /** The ideas inbox: loose ideas (projects in status "idea") and their voice notes. */
 export default function Ideas() {
@@ -125,10 +126,10 @@ function Promote({ idea, onDone }: { idea: Idea; onDone: () => void }) {
       </p>
       <label>
         Client
-        <select value={clientId} onChange={(e) => setClientId(e.target.value)}>
+        <Select value={clientId} onChange={(e) => setClientId(e.target.value)}>
           <option value="">No client (internal)</option>
           {clients.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
+        </Select>
       </label>
       {promote.isError && <p className="error">{errorMessage(promote.error)}</p>}
       <div className="dialog-actions">

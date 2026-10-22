@@ -18,6 +18,7 @@ import { TaskDrawer } from "../tasks/TaskDrawer";
 import { QuickAdd, TaskCalendar, TaskTable } from "../tasks/views";
 import { todayIn } from "../ui";
 import { useWorkspace } from "../workspace";
+import { Select } from "../Select";
 
 // Built-in views; saved ones appear after these.
 const BUILT_IN: { key: string; name: string; filters: TaskFilters }[] = [
@@ -147,28 +148,28 @@ export default function Tasks() {
       <div className={`filters row${showFilters ? "" : " collapsed"}`}>
         <input type="search" placeholder="Search" aria-label="Search tasks" defaultValue={filters.q ?? ""}
           key={`q-${viewKey}`} onKeyDown={(e) => e.key === "Enter" && setFilter({ q: (e.target as HTMLInputElement).value })} />
-        <select aria-label="Client" value={filters.client ?? ""} onChange={(e) => setFilter({ client: e.target.value })}>
+        <Select aria-label="Client" value={filters.client ?? ""} onChange={(e) => setFilter({ client: e.target.value })}>
           <option value="">All clients</option>
           {clients.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-        </select>
-        <select aria-label="Priority" value={filters.priority?.[0] ?? ""}
+        </Select>
+        <Select aria-label="Priority" value={filters.priority?.[0] ?? ""}
           onChange={(e) => setFilter({ priority: e.target.value ? [e.target.value] : undefined })}>
           <option value="">Any priority</option>
           {PRIORITIES.filter((p) => p !== "none").map((p) => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}
-        </select>
-        <select aria-label="Done" value={filters.open === undefined ? "" : String(filters.open)}
+        </Select>
+        <Select aria-label="Done" value={filters.open === undefined ? "" : String(filters.open)}
           onChange={(e) => setFilter({ open: e.target.value === "" ? undefined : e.target.value === "true" })}>
           <option value="">Open and done</option>
           <option value="true">Open</option>
           <option value="false">Done</option>
-        </select>
-        <select aria-label="Sort" value={filters.sort ?? "board"} onChange={(e) => setFilter({ sort: e.target.value as TaskFilters["sort"] })}>
+        </Select>
+        <Select aria-label="Sort" value={filters.sort ?? "board"} onChange={(e) => setFilter({ sort: e.target.value as TaskFilters["sort"] })}>
           <option value="due">Sort: due date</option>
           <option value="priority">Sort: priority</option>
           <option value="updated">Sort: recently updated</option>
           <option value="created">Sort: newest</option>
           <option value="board">Sort: board order</option>
-        </select>
+        </Select>
         {!savedView && (
           <button className="ghost" onClick={() => {
             const name = prompt("Save this filter as a view", builtIn ? `${builtIn.name} (copy)` : "");

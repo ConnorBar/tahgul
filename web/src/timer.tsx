@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, del, errorMessage, patch, post, type Project, type Timer } from "./api";
 import { hm, hms } from "./ui";
 import { useWorkspace } from "./workspace";
+import { Select } from "./Select";
 
 /** Projects you can log time to, grouped by client. */
 export function useProjects() {
@@ -36,7 +37,7 @@ export function ProjectSelect({
     groups.set(k, [...(groups.get(k) ?? []), p]);
   }
   return (
-    <select aria-label={label} className={className} value={value}
+    <Select aria-label={label} className={className} value={value}
       onChange={(e) => onChange(e.target.value)}>
       <option value="">No project</option>
       {[...groups.entries()].map(([group, list]) => (
@@ -46,7 +47,7 @@ export function ProjectSelect({
           ))}
         </optgroup>
       ))}
-    </select>
+    </Select>
   );
 }
 

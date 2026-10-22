@@ -16,6 +16,7 @@ import Time from "./pages/Time";
 import Today from "./pages/Today";
 import { LongTimerPrompt, TimerBar } from "./timer";
 import { WorkspaceProvider, useWorkspace } from "./workspace";
+import { Select } from "./Select";
 
 export default function App() {
   const me = useQuery({ queryKey: ["me"], queryFn: () => api<Me>("/auth/me") });
@@ -41,12 +42,12 @@ function WorkspaceSwitcher() {
   const { workspaces, current, setCurrent } = useWorkspace();
   if (workspaces.length < 2) return <span className="ws-name">{current.name}</span>;
   return (
-    <select className="ws-switch" aria-label="Workspace" value={current.id}
+    <Select className="ws-switch" aria-label="Workspace" value={current.id}
       onChange={(e) => setCurrent(e.target.value)}>
       {workspaces.map((w) => (
         <option key={w.id} value={w.id}>{w.name}</option>
       ))}
-    </select>
+    </Select>
   );
 }
 
