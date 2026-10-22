@@ -86,7 +86,15 @@ def test_time_and_reports(page):
 
 def test_calendar_renders(page):
     page.goto(URL + "/calendar")
+    strip = page.locator(".strip")
+    expect(strip).to_be_visible()
+    # All 24 hours are there, night included.
+    expect(strip.locator(".strip-gutter").get_by_text("11 PM", exact=True)).to_be_attached()
+    expect(strip.locator(".strip-gutter").get_by_text("1 AM", exact=True)).to_be_attached()
+    page.get_by_role("radio", name="Month").click()
     expect(page.locator(".fc").first).to_be_visible()
+    page.get_by_role("radio", name="Week").click()
+    expect(strip).to_be_visible()
 
 
 def test_invoice_draft_issue_pdf(page):

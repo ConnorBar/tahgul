@@ -16,6 +16,7 @@ import {
 } from "../api";
 import { Dialog, Empty, money, orNull, str } from "../ui";
 import { useWorkspace } from "../workspace";
+import { Select } from "../Select";
 
 const STATUS_LABEL: Record<ProjectStatus, string> = {
   active: "Active",
@@ -58,13 +59,13 @@ export default function Projects() {
       <div className="page-head">
         <h1>Projects</h1>
         <div className="row">
-          <select aria-label="Filter by client" value={clientFilter}
+          <Select aria-label="Filter by client" value={clientFilter}
             onChange={(e) => setParams(e.target.value ? { client: e.target.value } : {})}>
             <option value="">All clients</option>
             {clients.data?.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </select>
+          </Select>
           <button onClick={() => setEditing("new")}>New project</button>
         </div>
       </div>
@@ -209,20 +210,20 @@ export function ProjectForm({
         </label>
         <label>
           Client
-          <select aria-label="Client" value={f.client_id} onChange={set("client_id")}>
+          <Select aria-label="Client" value={f.client_id} onChange={set("client_id")}>
             <option value="">No client</option>
             {clients.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           Status
-          <select aria-label="Status" value={f.status} onChange={set("status")}>
+          <Select aria-label="Status" value={f.status} onChange={set("status")}>
             {PROJECT_STATUSES.map((s) => (
               <option key={s} value={s}>{s === "idea" ? "Idea" : STATUS_LABEL[s]}</option>
             ))}
-          </select>
+          </Select>
         </label>
         <label>
           Rate override ({ws.currency}/h)
@@ -294,13 +295,13 @@ function RateBreakdown({ project }: { project: Project }) {
           <strong>{info.data ? money(info.data.rate, info.data.currency, true) : "…"}</strong>
         </span>
         {activities.data && activities.data.length > 0 && (
-          <select aria-label="For activity" value={activity}
+          <Select aria-label="For activity" value={activity}
             onChange={(e) => setActivity(e.target.value)}>
             <option value="">Any activity</option>
             {activities.data.map((a) => (
               <option key={a.id} value={a.id}>{a.name}</option>
             ))}
-          </select>
+          </Select>
         )}
       </div>
       {info.data && (

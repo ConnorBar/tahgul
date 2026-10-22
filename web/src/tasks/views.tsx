@@ -4,6 +4,7 @@ import { api, patch, post, type QuickResult, type Task } from "../api";
 import { Empty, addDays, dayLabel, todayIn } from "../ui";
 import { useWorkspace } from "../workspace";
 import { DueLabel, PriorityBadge, useTaskInvalidation } from "./common";
+import { Select } from "../Select";
 
 /** The same tasks as a table (SPEC: list and table views). */
 export function TaskTable({ tasks, onOpen, showProject = true }: {
@@ -170,11 +171,11 @@ export function QuickAdd({ projectId, onCreated }: { projectId?: string; onCreat
           {p.priority && <span className="chip">!{p.priority}</span>}
           {p.labels.map((l) => <span key={l} className="chip">#{l}</span>)}
           {p.needs_confirmation && (
-            <select aria-label="Pick a project" value={choice} onChange={(e) => setChoice(e.target.value)}>
+            <Select aria-label="Pick a project" value={choice} onChange={(e) => setChoice(e.target.value)}>
               <option value="">{p.candidates.length ? `Which ${p.matched} project?` : "Pick a project…"}</option>
               {(p.candidates.length ? p.candidates : []).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               {!p.candidates.length && <ProjectOptions />}
-            </select>
+            </Select>
           )}
         </div>
       )}

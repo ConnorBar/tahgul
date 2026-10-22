@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api, del, errorMessage, post, type Client, type Project } from "./api";
 import { useWorkspace } from "./workspace";
+import { Select } from "./Select";
 
 type Link = {
   id: string;
@@ -72,22 +73,22 @@ export function ReportLinks({ client }: { client: Client }) {
       <form className="link-form" onSubmit={(e: FormEvent) => { e.preventDefault(); create.mutate(); }}>
         <label>
           Covers
-          <select value={f.project_id} onChange={(e) => setF((c) => ({ ...c, project_id: e.target.value }))}>
+          <Select value={f.project_id} onChange={(e) => setF((c) => ({ ...c, project_id: e.target.value }))}>
             <option value="">All of {client.name}'s projects</option>
             {own.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          </Select>
         </label>
         <label className="check"><input type="checkbox" {...check("show_tasks")} /><span>Tasks finished and coming up</span></label>
         <label className="check"><input type="checkbox" {...check("show_amounts")} /><span>Money: billable amounts and invoices</span></label>
         <label className="check"><input type="checkbox" {...check("show_notes")} /><span>Work log (time-entry notes)</span></label>
         <label>
           Expires
-          <select value={f.expires} onChange={(e) => setF((c) => ({ ...c, expires: e.target.value }))}>
+          <Select value={f.expires} onChange={(e) => setF((c) => ({ ...c, expires: e.target.value }))}>
             <option value="30">In 30 days</option>
             <option value="90">In 90 days</option>
             <option value="365">In a year</option>
             <option value="never">Never</option>
-          </select>
+          </Select>
         </label>
         <button disabled={create.isPending}>Create link</button>
       </form>

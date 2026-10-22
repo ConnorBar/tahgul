@@ -28,6 +28,8 @@ import {
 } from "../ui";
 import { useWorkspace } from "../workspace";
 import { ScopeSelect } from "../scopes";
+import { DateTimeRange, minutesBetween, type DTRange } from "../calendar/DateTimeRange";
+import { Select } from "../Select";
 
 type RowKey = { project_id: string | null; activity_id: string | null };
 const keyOf = (r: RowKey) => `${r.project_id ?? ""}|${r.activity_id ?? ""}`;
@@ -169,11 +171,11 @@ function Timesheet({ week }: { week: Week }) {
                     onChange={(id) => setAdding((a) => ({ ...a, project: id }))}
                     label="Add a row for project" />
                   {activities.data && activities.data.length > 0 && (
-                    <select aria-label="Activity for new row" value={adding.activity}
+                    <Select aria-label="Activity for new row" value={adding.activity}
                       onChange={(e) => setAdding((a) => ({ ...a, activity: e.target.value }))}>
                       <option value="">No activity</option>
                       {activities.data.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-                    </select>
+                    </Select>
                   )}
                   <button className="ghost" onClick={addRow}
                     disabled={!adding.project && !adding.activity}>
@@ -335,10 +337,11 @@ export function EntryForm({
   const invalidate = useTimeInvalidation();
   const start = entry ? zoned(entry.start_at, ws.timezone) : { date: defaultDate, time: "09:00" };
   const end = entry?.end_at ? zoned(entry.end_at, ws.timezone) : { date: defaultDate, time: "10:00" };
+  const [times, setTimes] = useState<DTRange>({
+    start: `${start.date}T${start.time}`,
+    end: `${end.date}T${end.time}`,
+  });
   const [f, setF] = useState({
-    date: start.date,
-    start: start.time,
-    end: end.time,
     project_id: entry?.project_id ?? "",
     activity_id: entry?.activity_id ?? "",
     scope_id: entry?.scope_id ?? "",
@@ -350,10 +353,9 @@ export function EntryForm({
     setF((cur) => ({ ...cur, [k]: e.target.value }));
 
   // Naive local times; the API reads them in the workspace time zone.
-  const endDate = f.end <= f.start ? addDays(f.date, 1) : f.date;
   const body = () => ({
-    start_at: `${f.date}T${f.start}:00`,
-    end_at: `${endDate}T${f.end}:00`,
+    start_at: `${times.start}:00`,
+    end_at: `${times.end}:00`,
     project_id: f.project_id || null,
     activity_id: f.activity_id || null,
     scope_id: f.scope_id || null,
@@ -380,14 +382,6 @@ export function EntryForm({
     },
   });
 
-  const mins = (() => {
-    const [sh, sm] = f.start.split(":").map(Number);
-    const [eh, em] = f.end.split(":").map(Number);
-    let m = eh * 60 + em - (sh * 60 + sm);
-    if (m <= 0) m += 24 * 60;
-    return m;
-  })();
-
   if (warning)
     return (
       <div>
@@ -402,20 +396,7 @@ export function EntryForm({
   return (
     <form onSubmit={(e: FormEvent) => { e.preventDefault(); save.mutate(); }}>
       {entry?.invoice_id && <p className="notice">This entry is on an invoice and can't change.</p>}
-      <div className="grid-3">
-        <label>
-          Date
-          <input type="date" value={f.date} onChange={set("date")} required />
-        </label>
-        <label>
-          Start
-          <input type="time" value={f.start} onChange={set("start")} required />
-        </label>
-        <label>
-          End <span className="muted small">({hm(mins * 60)})</span>
-          <input type="time" value={f.end} onChange={set("end")} required />
-        </label>
-      </div>
+      <DateTimeRange value={times} onChange={setTimes} idPrefix="entry" />
       <div className="grid-2">
         <label>
           Project
@@ -424,13 +405,13 @@ export function EntryForm({
         </label>
         <label>
           Activity
-          <select aria-label="Activity" value={f.activity_id} onChange={(e) => {
+          <Select aria-label="Activity" value={f.activity_id} onChange={(e) => {
             const a = activities.data?.find((x) => x.id === e.target.value);
             setF((c) => ({ ...c, activity_id: e.target.value, billable: a ? a.billable : c.billable }));
           }}>
             <option value="">None</option>
             {activities.data?.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
+          </Select>
         </label>
       </div>
       <ScopeSelect projectId={f.project_id} value={f.scope_id}
@@ -462,7 +443,7 @@ export function EntryForm({
         )}
         <span className="spacer" />
         <button type="button" className="ghost" onClick={onDone}>Cancel</button>
-        <button type="submit" disabled={save.isPending || !!entry?.invoice_id}>
+        <button type="submit" disabled={save.isPending || !!entry?.invoice_id || minutesBetween(times.start, times.end) <= 0}>
           {entry ? "Save" : "Add entry"}
         </button>
       </div>

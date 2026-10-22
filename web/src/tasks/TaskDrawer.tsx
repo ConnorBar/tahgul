@@ -20,6 +20,7 @@ import { useTimeInvalidation } from "../timer";
 import { Dialog, hm } from "../ui";
 import { useWorkspace } from "../workspace";
 import { PRIORITY_LABEL, TaskMeta, useTaskInvalidation } from "./common";
+import { Select } from "../Select";
 
 export function TaskDrawer({ taskId, onClose, onOpen }: {
   taskId: string | null;
@@ -93,23 +94,23 @@ function TaskBody({ id, onClose, onOpen }: { id: string; onClose: () => void; on
       <aside className="task-side">
         <label>
           Status
-          <select aria-label="Status" value={t.column_id}
+          <Select aria-label="Status" value={t.column_id}
             onChange={(e) => save.mutate({ status: e.target.value })}>
             {cols.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
+          </Select>
         </label>
         <label>
           Priority
-          <select aria-label="Priority" value={t.priority}
+          <Select aria-label="Priority" value={t.priority}
             onChange={(e) => save.mutate({ priority: e.target.value })}>
             {PRIORITIES.map((p) => <option key={p} value={p}>{PRIORITY_LABEL[p]}</option>)}
-          </select>
+          </Select>
         </label>
         <label>
           Type
-          <select aria-label="Type" value={t.type} onChange={(e) => save.mutate({ type: e.target.value })}>
+          <Select aria-label="Type" value={t.type} onChange={(e) => save.mutate({ type: e.target.value })}>
             {TASK_TYPES.map((x) => <option key={x} value={x}>{x[0].toUpperCase() + x.slice(1)}</option>)}
-          </select>
+          </Select>
         </label>
         <ScopeSelect projectId={t.project_id} value={t.scope_id ?? ""}
           onChange={(v) => save.mutate({ scope_id: v || null })} />
@@ -284,10 +285,10 @@ function Blockers({ task, onOpen }: { task: TaskDetail; onOpen: (id: string) => 
       )}
       {options.length > 0 && (
         <div className="row">
-          <select aria-label="Add blocker" value={pick} onChange={(e) => setPick(e.target.value)}>
+          <Select aria-label="Add blocker" value={pick} onChange={(e) => setPick(e.target.value)}>
             <option value="">Add a task this waits on…</option>
             {options.map((o) => <option key={o.id} value={o.id}>{o.ref} {o.title}</option>)}
-          </select>
+          </Select>
           <button className="ghost" disabled={!pick || add.isPending} onClick={() => add.mutate()}>Add</button>
         </div>
       )}

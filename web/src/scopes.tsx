@@ -13,6 +13,7 @@ import {
 } from "./api";
 import { Dialog, Empty, hoursLabel, money, orNull, str } from "./ui";
 import { useWorkspace } from "./workspace";
+import { Select } from "./Select";
 
 export function useScopes(projectId: string | null | undefined) {
   return useQuery({
@@ -38,12 +39,12 @@ export function ScopeSelect({
   const list = (scopes.data?.scopes ?? []).filter((s) => s.status !== "done" || s.id === value);
   if (!projectId || !list.length) return null;
   const select = (
-    <select aria-label="Scope" value={value} onChange={(e) => onChange(e.target.value)}>
+    <Select aria-label="Scope" value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">Outside any scope</option>
       {list.map((s) => (
         <option key={s.id} value={s.id}>{s.title}{s.status === "draft" ? " (draft)" : ""}</option>
       ))}
-    </select>
+    </Select>
   );
   return withLabel ? <label>Scope{select}</label> : select;
 }
@@ -200,15 +201,15 @@ function ScopeForm({ projectId, scope, onDone }: { projectId: string; scope: Sco
       <div className="grid-2">
         <label>
           Type
-          <select value={f.type} onChange={set("type")} disabled={!!scope?.invoiced_at}>
+          <Select value={f.type} onChange={set("type")} disabled={!!scope?.invoiced_at}>
             {SCOPE_TYPES.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
-          </select>
+          </Select>
         </label>
         <label>
           Status
-          <select value={f.status} onChange={set("status")}>
+          <Select value={f.status} onChange={set("status")}>
             {SCOPE_STATUSES.map((t) => <option key={t} value={t}>{t[0].toUpperCase() + t.slice(1)}</option>)}
-          </select>
+          </Select>
         </label>
       </div>
       {f.type === "fixed" && (
