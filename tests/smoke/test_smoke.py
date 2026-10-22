@@ -136,3 +136,21 @@ def test_idea_with_voice_note(page):
         " : a.addEventListener('loadedmetadata', () => r(a.duration)))"
     )
     assert 1.9 < duration < 2.1
+
+
+def test_record_invoice_sent_elsewhere(page):
+    import time
+
+    number = f"EXT-{int(time.time())}"
+    page.goto(URL + "/invoices")
+    page.get_by_role("button", name="Record a sent invoice").click()
+    dialog = page.get_by_role("dialog")
+    dialog.get_by_label("Client").click()
+    page.locator("[role=option]:not([aria-disabled])").first.click()
+    dialog.get_by_label("Invoice number").fill(number)
+    dialog.get_by_label(re.compile(r"^Amount")).fill("125")
+    dialog.get_by_role("button", name="Record invoice").click()
+    expect(page.get_by_role("heading", name=re.compile(f"Invoice {number}"))).to_be_visible()
+    page.get_by_role("button", name="Mark paid").click()
+    page.get_by_role("button", name=f"Paid {number}").click()
+    expect(page.locator("h1 .status-badge")).to_have_text("Paid")

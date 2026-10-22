@@ -5,7 +5,8 @@ and groups it into lines:
 
 * hourly work: by project, activity, scope, day or entry, at each entry's frozen rate,
   with the workspace's rounding applied per entry (raw entries stay exact)
-* fixed-fee scopes: one line for the fee once the scope is done; its time is covered
+* fixed-fee scopes: whatever of the fee isn't billed yet, once the scope is done; its time
+  is covered. Parts of a fee (a deposit, a milestone) can be billed any time as "fee" lines.
 * retainers: one line per month, plus any hours past the monthly allowance
 
 Entries on a draft are locked. Issuing assigns the next gap-free number, freezes the
@@ -25,7 +26,7 @@ from zoneinfo import ZoneInfo
 
 from fastapi import HTTPException
 from jinja2 import Environment, FileSystemLoader, select_autoescape
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from tahgul import numbering
@@ -44,6 +45,9 @@ from tahgul.models import (
 from tahgul.timeutil import utcnow
 
 CENT = Decimal("0.01")
+# Lines a rebuild leaves alone: typed in by hand, or a fixed-fee part billed on purpose.
+KEPT = ("manual", "fee")
+FEE_KINDS = ("fixed", "fee")
 ZERO = Decimal("0")
 TEMPLATES = Path(__file__).parent / "templates"
 
@@ -130,7 +134,7 @@ def build_lines(db: Session, inv: Invoice) -> list[str]:
     for e in db.scalars(select(TimeEntry).where(TimeEntry.invoice_id == inv.id)).all():
         e.invoice_id = e.invoice_line_id = None
     for line in list(inv.lines):
-        if line.kind != "manual":
+        if line.kind not in KEPT:
             inv.lines.remove(line)
             db.delete(line)
     db.flush()
@@ -197,7 +201,7 @@ def build_lines(db: Session, inv: Invoice) -> list[str]:
             )
         )
 
-    # Fixed-fee scopes: billed once, when done.
+    # Fixed-fee scopes: once done, whatever of the fee isn't billed yet.
     fixed_scopes = db.scalars(
         select(Scope)
         .join(Project)
@@ -205,21 +209,29 @@ def build_lines(db: Session, inv: Invoice) -> list[str]:
             Project.client_id == client.id,
             Scope.type == "fixed",
             Scope.status == "done",
-            Scope.invoiced_at.is_(None),
             Scope.deleted_at.is_(None),
         )
     ).all()
+    settled: set[uuid.UUID] = set()
     for s in fixed_scopes:
+        here = sum(
+            (ln.amount for ln in inv.lines if ln.kind == "fee" and ln.scope_id == s.id), ZERO
+        )
+        rest = q2((s.fee or ZERO) - fee_billed(db, s.id, exclude=inv.id) - here)
+        settled.add(s.id)
+        if rest <= 0:
+            continue
         covered = list(db.scalars(_entries_query(client).where(TimeEntry.scope_id == s.id)))
+        part = rest < q2(s.fee or ZERO)
         new_lines.append(
             (
                 InvoiceLine(
                     kind="fixed",
-                    description=f"{s.title} (fixed fee)",
+                    description=f"{s.title} (fixed fee{', balance' if part else ''})",
                     quantity=Decimal(1),
                     unit="item",
-                    unit_price=q2(s.fee or ZERO),
-                    amount=q2(s.fee or ZERO),
+                    unit_price=rest,
+                    amount=rest,
                     project_id=s.project_id,
                     scope_id=s.id,
                 ),
@@ -227,11 +239,11 @@ def build_lines(db: Session, inv: Invoice) -> list[str]:
             )
         )
     for sid in fixed:
-        if sid not in {s.id for s in fixed_scopes}:
+        if sid not in settled:
             scope = db.get(Scope, sid)
             warnings.append(
-                f"Time on fixed-fee scope “{scope.title}” isn't billed until "
-                "the scope is marked done."
+                f"Time on fixed-fee scope “{scope.title}” is covered by the fee, which goes "
+                "on an invoice when the scope is marked done (or bill part of it from the scope)."
             )
 
     # Retainers: one line per month in the period, plus overage.
@@ -320,8 +332,8 @@ def build_lines(db: Session, inv: Invoice) -> list[str]:
                 "is already invoiced or outside the retainer's dates."
             )
 
-    # Place: generated lines first (in order), manual lines after.
-    manual = [ln for ln in inv.lines if ln.kind == "manual"]
+    # Place: generated lines first (in order), kept lines after.
+    manual = [ln for ln in inv.lines if ln.kind in KEPT]
     pos = 0
     for line, covered in new_lines:
         line.position = pos
@@ -462,18 +474,51 @@ def store_pdf(inv: Invoice) -> Path:
     return path
 
 
+# --- Fixed fees --------------------------------------------------------------------------
+
+
+def fee_billed(
+    db: Session,
+    scope_id: uuid.UUID,
+    *,
+    exclude: uuid.UUID | None = None,
+    statuses: tuple[str, ...] = ("draft", "sent", "paid"),
+) -> Decimal:
+    """How much of a fixed fee is on invoices (by default: drafts too, void ones never)."""
+    q = (
+        select(func.coalesce(func.sum(InvoiceLine.amount), 0))
+        .join(Invoice, InvoiceLine.invoice_id == Invoice.id)
+        .where(
+            InvoiceLine.scope_id == scope_id,
+            InvoiceLine.kind.in_(FEE_KINDS),
+            Invoice.deleted_at.is_(None),
+            Invoice.status.in_(statuses),
+        )
+    )
+    if exclude is not None:
+        q = q.where(Invoice.id != exclude)
+    return Decimal(db.scalar(q))
+
+
+def sync_fee_scopes(db: Session, inv: Invoice) -> None:
+    """Mark each fixed-fee scope on the invoice fully invoiced, or not, after a change."""
+    db.flush()
+    for sid in {ln.scope_id for ln in inv.lines if ln.kind in FEE_KINDS and ln.scope_id}:
+        s = db.get(Scope, sid)
+        if s is None:
+            continue
+        full = s.fee is not None and fee_billed(db, sid, statuses=("sent", "paid")) >= s.fee
+        if full and s.invoiced_at is None:
+            s.invoiced_at = utcnow()
+        elif not full:
+            s.invoiced_at = None
+
+
 def release(db: Session, inv: Invoice) -> None:
-    """Free the invoice's time (and fixed-fee scopes) so it can be billed again."""
+    """Free the invoice's time so it can be billed again (call before voiding/deleting)."""
     for e in db.scalars(select(TimeEntry).where(TimeEntry.invoice_id == inv.id)).all():
         e.invoice_id = e.invoice_line_id = None
-    for line in inv.lines:
-        if line.kind == "fixed" and line.scope_id:
-            s = db.get(Scope, line.scope_id)
-            if s is not None:
-                s.invoiced_at = None
 
 
 def mark_fixed_invoiced(db: Session, inv: Invoice) -> None:
-    for line in inv.lines:
-        if line.kind == "fixed" and line.scope_id:
-            db.get(Scope, line.scope_id).invoiced_at = utcnow()
+    sync_fee_scopes(db, inv)

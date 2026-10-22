@@ -19,6 +19,7 @@ import {
 import { Dialog, Empty, addDays, dayLabel, hoursLabel, money, orNull, str, todayIn } from "../ui";
 import { useWorkspace } from "../workspace";
 import { Select } from "../Select";
+import { OpenFixedFees, RecordInvoiceForm } from "../fixedFees";
 
 const STATUS_LABEL: Record<InvoiceStatus, string> = {
   draft: "Draft",
@@ -33,6 +34,13 @@ const GROUP_LABEL: Record<(typeof INVOICE_GROUPINGS)[number], string> = {
   scope: "By scope",
   day: "By day",
   entry: "Each entry",
+};
+
+const KIND_LABEL: Partial<Record<InvoiceLine["kind"], string>> = {
+  fixed: "fixed fee",
+  fee: "part of a fixed fee",
+  retainer: "retainer",
+  overage: "over the retainer",
 };
 
 const date = (d: string) => dayLabel(d, { month: "short", day: "numeric", year: "numeric" });
@@ -58,6 +66,7 @@ export default function Invoices() {
   const { current: ws } = useWorkspace();
   const [status, setStatus] = useState<InvoiceStatus | "">("");
   const [creating, setCreating] = useState<string | "pick" | null>(null);
+  const [recording, setRecording] = useState(false);
   const navigate = useNavigate();
   const invoices = useQuery({
     queryKey: ["invoices", ws.id, status],
@@ -82,6 +91,8 @@ export default function Invoices() {
           <a className="button ghost" href={`/api/v1/exports/invoices.csv?workspace_id=${ws.id}&year=${year}`}>
             Export {year} (CSV)
           </a>
+          <button className="ghost" onClick={() => setRecording(true)}
+            title="An invoice you sent from somewhere else, to track its payment here">Record a sent invoice</button>
           <button onClick={() => setCreating("pick")}>New invoice</button>
         </div>
       </div>
@@ -115,9 +126,12 @@ export default function Invoices() {
                   {unbilled.data.map((u) => (
                     <tr key={u.client_id}>
                       <td><strong>{u.client_name}</strong>
-                        <div className="small muted">{date(u.first_date)} – {date(u.last_date)} · {u.entries} entr{u.entries === 1 ? "y" : "ies"}</div>
+                        <div className="small muted">
+                          {u.entries > 0 && <>{date(u.first_date)} – {date(u.last_date)} · {u.entries} entr{u.entries === 1 ? "y" : "ies"}</>}
+                          {Number(u.fees) > 0 && <>{u.entries > 0 ? " · " : ""}{money(u.fees, u.currency)} fixed fee</>}
+                        </div>
                       </td>
-                      <td className="num">{hoursLabel(u.hours) || 0} h</td>
+                      <td className="num">{u.entries > 0 ? `${hoursLabel(u.hours) || 0} h` : ""}</td>
                       <td className="num strong">{money(u.amount, u.currency)}</td>
                       <td className="right">
                         <button className="ghost" onClick={() => setCreating(u.client_id)}>Draft invoice</button>
@@ -130,6 +144,8 @@ export default function Invoices() {
           </div>
         </div>
       )}
+
+      <OpenFixedFees />
 
       <div className="group">
         <div className="row">
@@ -156,7 +172,8 @@ export default function Invoices() {
                   {invoices.data.map((i) => (
                     <tr key={i.id} tabIndex={0} onClick={() => navigate(`/invoices/${i.id}`)}
                       onKeyDown={(e) => e.key === "Enter" && navigate(`/invoices/${i.id}`)}>
-                      <td><Link to={`/invoices/${i.id}`}>{i.number ?? "Draft"}</Link></td>
+                      <td><Link to={`/invoices/${i.id}`}>{i.number ?? "Draft"}</Link>
+                        {i.external && <span className="tag" title="Sent from elsewhere, tracked here">RECORDED</span>}</td>
                       <td>{i.client_name}</td>
                       <td className="hide-narrow">{date(i.issue_date)}</td>
                       <td>{i.status === "paid" && i.paid_on ? <span className="muted">paid {date(i.paid_on)}</span> : date(i.due_date)}</td>
@@ -171,6 +188,11 @@ export default function Invoices() {
         )}
       </div>
 
+      <Dialog open={recording} title="Record an invoice you sent" onClose={() => setRecording(false)}>
+        {recording && (
+          <RecordInvoiceForm onDone={(inv) => { setRecording(false); if (inv) navigate(`/invoices/${inv.id}`); }} />
+        )}
+      </Dialog>
       <Dialog open={creating !== null} title="New invoice" onClose={() => setCreating(null)}>
         {creating !== null && (
           <NewInvoice clientId={creating === "pick" ? "" : creating}
@@ -253,7 +275,8 @@ function NewInvoice({ clientId, unbilled, onDone }: {
         </Select>
       </label>
       <p className="muted small">
-        Pulls in billable time not yet invoiced, finished fixed-fee scopes and retainer months.
+        Pulls in billable time not yet invoiced, what's left of finished fixed-fee scopes and
+        retainer months.
         It stays a draft until you issue it.
       </p>
       {create.isError && <p className="error">{errorMessage(create.error)}</p>}
@@ -295,6 +318,7 @@ export function InvoicePage() {
   if (!inv) return <section className="page"><p className="muted">Loading…</p></section>;
   const draft = inv.status === "draft";
   const shown = warnings ?? inv.warnings;
+  if (inv.external) return <ExternalInvoice inv={inv} />;
 
   return (
     <section className="page full">
@@ -486,7 +510,7 @@ function Lines({ inv, onChanged }: { inv: Invoice; onChanged: () => void }) {
                       onSave={(description) => run.mutate(() => patch(`/invoices/${inv.id}/lines/${ln.id}`, { description }))} />
                   ) : ln.description}
                   <div className="small muted">
-                    {ln.kind === "manual" ? "added by hand" : ln.kind === "time" ? `${ln.entry_count} time entr${ln.entry_count === 1 ? "y" : "ies"}` : `${ln.kind}${ln.entry_count ? ` · covers ${ln.entry_count} entr${ln.entry_count === 1 ? "y" : "ies"}` : ""}`}
+                    {ln.kind === "manual" ? "added by hand" : ln.kind === "time" ? `${ln.entry_count} time entr${ln.entry_count === 1 ? "y" : "ies"}` : `${KIND_LABEL[ln.kind] ?? ln.kind}${ln.entry_count ? ` · covers ${ln.entry_count} entr${ln.entry_count === 1 ? "y" : "ies"}` : ""}`}
                   </div>
                 </td>
                 <td className="num">{hoursLabel(ln.quantity) || "0"} {unit(ln)}</td>
@@ -566,6 +590,133 @@ function ManualLine({ invoiceId, currency, onDone }: { invoiceId: string; curren
       <button disabled={add.isPending}>Add</button>
       <button type="button" className="ghost" onClick={onDone}>Cancel</button>
       {add.isError && <p className="error small">{errorMessage(add.error)}</p>}
+    </form>
+  );
+}
+
+// --- An invoice sent from elsewhere ------------------------------------------------------
+
+function ExternalInvoice({ inv }: { inv: Invoice }) {
+  const navigate = useNavigate();
+  const invalidate = useInvoiceInvalidation();
+  const [editing, setEditing] = useState(false);
+  const act = useMutation({
+    mutationFn: (fn: () => Promise<unknown>) => fn(),
+    onSuccess: () => invalidate(),
+  });
+  const upload = (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file, file.name);
+    act.mutate(() => api(`/invoices/${inv.id}/file`, { method: "POST", body: fd }));
+  };
+  const line = inv.lines[0];
+  return (
+    <section className="page">
+      <div className="page-head">
+        <div>
+          <p className="muted small crumbs"><Link to="/invoices">Invoices</Link> · {inv.client_name}</p>
+          <h1>Invoice {inv.number} <StatusBadge inv={inv} /></h1>
+        </div>
+        <div className="row">
+          {inv.status === "sent" && <MarkPaid inv={inv} onPaid={(paid_on) => act.mutate(() => post(`/invoices/${inv.id}/paid`, { paid_on }))} />}
+          {inv.status === "paid" && (
+            <button className="ghost" onClick={() => act.mutate(() => post(`/invoices/${inv.id}/unpaid`))}>Mark unpaid</button>
+          )}
+        </div>
+      </div>
+      <p className="notice">Sent from somewhere else and recorded here to track its payment. Tahgul's own numbering isn't affected.</p>
+      {act.isError && <p className="error">{errorMessage(act.error)}</p>}
+      <div className="card invoice-meta">
+        {editing ? (
+          <ExternalEdit inv={inv} onDone={() => setEditing(false)} />
+        ) : (
+          <>
+            <div className="grid-2">
+              <div>
+                <span className="label small">For</span>
+                <div>{line?.description}</div>
+                <div className="stat-n">{money(inv.total, inv.currency)}</div>
+              </div>
+              <div className="small">
+                <div>Sent {date(inv.issue_date)}</div>
+                <div>Due {date(inv.due_date)}</div>
+                {inv.paid_on && <div className="ok">Paid {date(inv.paid_on)}</div>}
+                {inv.voided_at && <div className="danger-text">Voided</div>}
+              </div>
+            </div>
+            {inv.notes && <p className="pre small">{inv.notes}</p>}
+            {inv.status !== "void" && (
+              <div className="row"><button className="ghost small" onClick={() => setEditing(true)}>Edit details</button></div>
+            )}
+          </>
+        )}
+      </div>
+      <div className="card">
+        <span className="label">The PDF you sent</span>
+        {inv.has_pdf ? (
+          <div className="row">
+            <a className="button ghost" href={`/api/v1/invoices/${inv.id}/pdf`} target="_blank" rel="noreferrer">Open PDF</a>
+            <label className="button ghost file-btn">Replace<input type="file" accept="application/pdf,.pdf" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
+            <button className="ghost" onClick={() => confirm("Remove the attached PDF?") && act.mutate(() => del(`/invoices/${inv.id}/file`))}>Remove</button>
+          </div>
+        ) : (
+          <div className="row">
+            <span className="muted small">None attached.</span>
+            <label className="button ghost file-btn">Attach PDF<input type="file" accept="application/pdf,.pdf" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} /></label>
+          </div>
+        )}
+      </div>
+      <div className="danger-zone row">
+        <button className="danger" disabled={act.isPending}
+          onClick={() => confirm(`Delete the record of invoice ${inv.number}? (Only the record here: nothing is sent.)`) &&
+            act.mutate(async () => { await del(`/invoices/${inv.id}`); navigate("/invoices"); })}>
+          Delete record
+        </button>
+        {inv.status !== "void" && (
+          <button className="danger" disabled={act.isPending}
+            onClick={() => confirm(`Mark ${inv.number} void (cancelled)?`) && act.mutate(() => post(`/invoices/${inv.id}/void`))}>
+            Void
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function ExternalEdit({ inv, onDone }: { inv: Invoice; onDone: () => void }) {
+  const invalidate = useInvoiceInvalidation();
+  const [f, setF] = useState({
+    number: inv.number ?? "",
+    issue_date: inv.issue_date,
+    due_date: inv.due_date,
+    amount: inv.total,
+    description: inv.lines[0]?.description ?? "",
+    notes: str(inv.notes),
+  });
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF((c) => ({ ...c, [k]: e.target.value }));
+  const save = useMutation({
+    mutationFn: () => patch(`/invoices/${inv.id}/external`, { ...f, notes: orNull(f.notes) }),
+    onSuccess: async () => {
+      await invalidate();
+      onDone();
+    },
+  });
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
+      <div className="grid-2">
+        <label>Invoice number<input value={f.number} onChange={set("number")} required maxLength={60} /></label>
+        <label>Amount ({inv.currency})<input inputMode="decimal" value={f.amount} onChange={set("amount")} required /></label>
+        <label>Sent on<input type="date" value={f.issue_date} onChange={set("issue_date")} required /></label>
+        <label>Due<input type="date" value={f.due_date} onChange={set("due_date")} required min={f.issue_date} /></label>
+        <label className="span-2">For<input value={f.description} onChange={set("description")} required maxLength={500} /></label>
+        <label className="span-2">Notes<textarea rows={2} value={f.notes} onChange={set("notes")} /></label>
+      </div>
+      {save.isError && <p className="error">{errorMessage(save.error)}</p>}
+      <div className="dialog-actions">
+        <span className="spacer" />
+        <button type="button" className="ghost" onClick={onDone}>Cancel</button>
+        <button disabled={save.isPending}>Save</button>
+      </div>
     </form>
   );
 }

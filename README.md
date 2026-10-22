@@ -10,7 +10,7 @@ The full design is in [docs/SPEC.md](docs/SPEC.md). Each milestone in the build 
 - **Time:** a timer on every page, manual entries, a weekly timesheet, rounding at invoice time, reports by client, project, scope and week.
 - **Tasks:** kanban boards with your own columns, list and calendar views, saved filters, subtasks, blocked-by links, comments and a full history, quick add (`Fix VPN for Acme tomorrow !high #network`).
 - **Calendar:** two-way CalDAV sync with the Radicale in the stack or iCloud, a day/week view next to logged time, "log this meeting as time?", a Billable calendar, and tasks in the iPhone's Reminders app.
-- **Invoices:** drafts from unbilled time, fixed fees and retainers, gap-free numbering, PDF, paid/void, CSV exports; read-only progress reports for clients.
+- **Invoices:** drafts from unbilled time, fixed fees (in parts or whole) and retainers, gap-free numbering, PDF, paid/void, CSV exports; record invoices sent from elsewhere to track their payment; read-only progress reports for clients.
 - **Ideas:** an inbox with voice notes from Yog (or anywhere), playback, optional local Whisper transcripts, promote to a project.
 - **Agents:** one REST API for everything, an MCP server for a local model, Siri Shortcuts, idempotent writes, name lookups that ask instead of guessing, and signed webhooks.
 - **Running it:** Docker Compose on the homelab behind Tailscale, an installable phone app, owner login with TOTP, scoped API tokens, an audit log, encrypted secrets, backups with a tested restore, demo data and browser smoke tests.

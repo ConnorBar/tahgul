@@ -57,6 +57,7 @@ def test_tools_are_listed(mcp):
         "summary",
         "capture_idea",
         "unbilled_work",
+        "fixed_fees",
         "voice_notes",
         "budget_left",
         "draft_invoice",
@@ -140,6 +141,17 @@ def test_invoice_tools_need_invoice_scope(mcp, logged_in, client):
     assert u["clients"][0]["client_name"] == "Acme Farms" and u["clients"][0]["hours"] == "2.00"
     d = call(billing, "draft_invoice", client="acme", period_start="2026-10-01")
     assert d["total"] == "250.00" and d["speech"].startswith("Drafted")
+    assert call(mcp, "fixed_fees")["status"] == 403
+    sc = c.post(
+        f"{API}/projects/{p['id']}/scopes", json={"title": "Audit", "type": "fixed", "fee": "900"}
+    ).json()
+    c.post(
+        f"{API}/invoices/external",
+        json={"scope_id": sc["id"], "number": "A-7", "issue_date": "2026-10-01", "amount": "900"},
+    )
+    f = call(billing, "fixed_fees")["fees"][0]
+    assert (f["work"], f["outstanding"], f["to_invoice"]) == ("Audit", "900.00", "0.00")
+    assert f["invoices"][0]["number"] == "A-7"
 
 
 def test_voice_notes_tool(mcp, logged_in):

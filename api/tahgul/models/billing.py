@@ -4,7 +4,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, ForeignKey, Numeric, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, ForeignKey, Numeric, String, Text, UniqueConstraint, false
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from tahgul.models.base import Base, RecordMixin, UTCDateTime
@@ -38,7 +38,7 @@ class Scope(RecordMixin, Base):
     included_hours: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     start_date: Mapped[date | None] = mapped_column(Date)
     end_date: Mapped[date | None] = mapped_column(Date)
-    # A fixed-fee scope is billed once; this is when.
+    # When a fixed fee was fully invoiced (it can be billed in parts: a deposit, then the rest).
     invoiced_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
     project: Mapped[Project] = relationship()
@@ -75,6 +75,12 @@ class Invoice(RecordMixin, Base):
     paid_on: Mapped[date | None] = mapped_column(Date)
     voided_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
     pdf_path: Mapped[str | None] = mapped_column(String(500))
+    # Recorded, not made here: an invoice sent from elsewhere (Word, another app) so it
+    # can be tracked. It keeps its own number and never takes one from Tahgul's sequence.
+    external: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=false()
+    )
+    external_number: Mapped[str | None] = mapped_column(String(60))
 
     workspace: Mapped[Workspace] = relationship()
     client: Mapped[Client] = relationship()
@@ -90,7 +96,9 @@ class InvoiceLine(RecordMixin, Base):
         ForeignKey("invoices.id"), index=True, nullable=False
     )
     position: Mapped[int] = mapped_column(nullable=False, default=0)
-    # time | fixed | retainer | overage | manual
+    # time | fixed | fee | retainer | overage | manual
+    # "fixed" is the rest of a done fixed-fee scope, added by the draft builder; "fee" is a
+    # part (or all) of a fixed fee billed on purpose, e.g. a deposit. Builders keep "fee".
     kind: Mapped[str] = mapped_column(String(10), nullable=False)
     description: Mapped[str] = mapped_column(String(500), nullable=False)
     quantity: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)

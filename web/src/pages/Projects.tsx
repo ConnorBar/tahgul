@@ -160,6 +160,8 @@ export function ProjectForm({
     budget_amount: str(project?.budget_amount),
     colour: project?.colour ?? COLOURS[0],
     description: str(project?.description),
+    pricing: "hourly" as "hourly" | "fixed",
+    fee: "",
   });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) =>
     setF((cur) => ({ ...cur, [k]: e.target.value }));
@@ -182,10 +184,21 @@ export function ProjectForm({
     onDone(created);
   };
   const save = useMutation({
-    mutationFn: () =>
-      project
-        ? patch<Project>(`/projects/${project.id}`, body())
-        : post<Project>("/projects", { ...body(), workspace_id: ws.id }),
+    mutationFn: async () => {
+      if (project) return patch<Project>(`/projects/${project.id}`, body());
+      const created = await post<Project>("/projects", { ...body(), workspace_id: ws.id });
+      if (f.pricing === "fixed") {
+        // The whole project at one price: a fixed-fee scope that its time falls under.
+        await post(`/projects/${created.id}/scopes`, {
+          title: f.name.trim(),
+          type: "fixed",
+          fee: f.fee,
+          status: "agreed",
+        });
+        qc.invalidateQueries({ queryKey: ["scopes", created.id] });
+      }
+      return created;
+    },
     onSuccess: (saved) => done(project ? undefined : saved),
   });
   const remove = useMutation({
@@ -225,6 +238,30 @@ export function ProjectForm({
             ))}
           </Select>
         </label>
+        {!project && (
+          <div className="span-2 pricing">
+            <span className="field-label">Pricing</span>
+            <div className="seg-control wide" role="radiogroup" aria-label="Pricing">
+              {([["hourly", "By the hour"], ["fixed", "Fixed price"]] as const).map(([v, label]) => (
+                <button key={v} type="button" role="radio" aria-checked={f.pricing === v}
+                  className={f.pricing === v ? "on" : undefined}
+                  onClick={() => setF((c) => ({ ...c, pricing: v }))}>{label}</button>
+              ))}
+            </div>
+          </div>
+        )}
+        {!project && f.pricing === "fixed" && (
+          <>
+            <label>
+              Fixed price ({ws.currency})
+              <input inputMode="decimal" value={f.fee} onChange={set("fee")} required placeholder="6000" />
+            </label>
+            <p className="muted small fixed-note">
+              Track what's invoiced and paid on the project's Scopes tab. Already sent the
+              invoice? Record it there.
+            </p>
+          </>
+        )}
         <label>
           Rate override ({ws.currency}/h)
           <input inputMode="decimal" value={f.rate} onChange={set("rate")}
