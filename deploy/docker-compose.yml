@@ -3,10 +3,13 @@
 #   cp deploy/.env.example deploy/.env    # then edit it
 #   docker compose -f deploy/docker-compose.yml up --build
 #
-# Development: the API is published on 127.0.0.1:8000 only (never the LAN).
-# Homelab: also start the Tailscale sidecar with `--profile tailscale`; it serves
-# https://tahgul.<tailnet>.ts.net (the app) and https://tahgul.<tailnet>.ts.net:8443
-# (Radicale, for the iPhone's Calendar app) and is the only way in from other devices.
+# Everything is published on 127.0.0.1 only (never the LAN). Two ways onto the tailnet:
+#
+# * On Hive next to Yog (docs/hive.md, deploy/hive/setup.sh): the host's own
+#   `tailscale serve` publishes the localhost ports, like Yog's 8780 → :443.
+#   https://hive.<tailnet>.ts.net:8443 is the app, :8444 is Radicale (calendars).
+# * Its own tailnet machine: start the Tailscale sidecar with `--profile tailscale`;
+#   it serves https://tahgul.<tailnet>.ts.net (the app) and :8443 (Radicale).
 
 name: tahgul
 
@@ -34,6 +37,9 @@ services:
       RADICALE_PASSWORD: ${RADICALE_PASSWORD:?set RADICALE_PASSWORD in deploy/.env}
     volumes:
       - radicale-data:/data
+    ports:
+      # For the host's `tailscale serve` (Hive). The stack itself uses radicale:5232.
+      - "127.0.0.1:${RADICALE_PORT:-5232}:5232"
 
   api:
     build:
@@ -83,6 +89,8 @@ services:
         condition: service_healthy
     entrypoint: []
     command: ["uvicorn", "tahgul.public:app", "--host", "0.0.0.0", "--port", "8001", "--proxy-headers", "--forwarded-allow-ips", "*"]
+    ports:
+      - "127.0.0.1:${TAHGUL_REPORTS_PORT:-8001}:8001"
     environment:
       TAHGUL_DATABASE_URL: postgresql+psycopg://tahgul:${POSTGRES_PASSWORD}@db:5432/tahgul
       TAHGUL_SCHEDULER_ENABLED: "false"

@@ -9,7 +9,7 @@ The Docker stack runs [Radicale](https://radicale.org), a small CalDAV server. N
 1. **Set the login** in `deploy/.env`: `RADICALE_USER`, `RADICALE_PASSWORD`, plus a `TAHGUL_SECRET_KEY` (Tahgul stores the Radicale password encrypted with it).
 2. **Start the stack** with the Tailscale profile (see the README). On first start Tahgul connects to Radicale by itself, creates a **Work** calendar, and makes it the default for new events.
 3. **Add it to the iPhone:** in Settings, open Calendar's settings (under **Apps** on recent iOS), then Calendar Accounts → Add Account → Other → **Add CalDAV Account**.
-    - Server: `tahgul.<your-tailnet>.ts.net:8443`
+    - Server: `tahgul.<your-tailnet>.ts.net:8443` with the Tailscale sidecar, or `hive.<your-tailnet>.ts.net:8444` on Hive ([hive.md](hive.md))
     - User name and password: the `RADICALE_USER` and `RADICALE_PASSWORD` from step 1
     - Tailscale must be on for the phone to reach it. iOS needs HTTPS, which `tailscale serve` provides with a real certificate.
 4. On a Mac: Calendar → Settings → Accounts → + → Other CalDAV Account → Manual, with the same details.
