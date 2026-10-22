@@ -752,3 +752,56 @@ button.small, a.button.small { padding: 0.3rem 0.65rem; font-size: 0.85rem; }
   .cal-toolbar .seg-control { order: 10; width: 100%; display: flex; }
   .cal-toolbar .seg-control button { flex: 1; padding: 0 0.4rem; }
 }
+
+/* Link- and label-buttons look and size like real buttons. */
+a.button, label.button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
+  min-height: var(--control-h); padding: 0 1rem; margin: 0; font-size: var(--control-font); font-weight: 550;
+  line-height: 1.2; border-radius: var(--control-radius); white-space: nowrap; cursor: pointer;
+}
+label.button { border: 1px solid var(--accent); background: var(--accent); color: var(--accent-text); }
+a.button.ghost, label.button.ghost { background: var(--surface); color: var(--text); border-color: var(--line); }
+label.file-btn input { display: none; }
+
+/* Fixed-price work */
+.contracts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+.contract { margin: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+.contract-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.contract-head h3 { margin: 0.1rem 0 0; font-size: 1.05rem; }
+.contract-head .label { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.contract-fee { font-size: 1.25rem; font-weight: 650; font-variant-numeric: tabular-nums; }
+.contract-actions { gap: 0.5rem; }
+.contract .ok { margin: 0; }
+.fee-bar { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--bg); border: 1px solid var(--line); }
+.fee-bar span { height: 100%; }
+.fee-legend { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; margin-top: 0.45rem; color: var(--muted); }
+.fee-legend strong { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.fee-legend i { display: inline-block; width: 0.6rem; height: 0.6rem; border-radius: 2px; margin-right: 0.35rem; vertical-align: 0; }
+.fee-paid { background: var(--accent); }
+.fee-waiting { background: color-mix(in srgb, var(--accent) 40%, var(--surface)); }
+.fee-overdue { background: var(--danger); }
+.fee-draft { background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--muted) 45%, transparent) 0 3px, transparent 3px 6px); }
+.fee-left { background: transparent; border: 1px dashed var(--line); }
+.fee-legend i.fee-left { border-color: var(--muted); }
+.fee-invoices { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.fee-invoice { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 0.75rem; padding: 0.55rem 0; border-bottom: 1px solid var(--line); }
+.fi-main { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.5rem; }
+.fi-when { flex-basis: 100%; }
+.fee-invoice:last-child { border-bottom: 0; }
+.fee-invoice .tag { margin-left: 0; }
+.fee-invoice .num { min-width: 5.5rem; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.fee-invoice .status-badge { vertical-align: 0; }
+button.fixed-chip { min-height: var(--control-h-sm); background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 999px; font-weight: 500; font-size: 0.85rem; padding: 0 0.8rem; }
+button.fixed-chip:hover { border-color: var(--accent); }
+.fixed-chip .ok { margin: 0; }
+.field-label { display: block; font-weight: 500; font-size: 0.92rem; margin-bottom: 0.35rem; }
+.pricing { margin-bottom: var(--field-gap); }
+.pricing .seg-control.wide { margin-bottom: 0; }
+.fixed-note { align-self: center; margin: 0 0 var(--field-gap); }
+.chips-row { margin: -0.4rem 0 var(--field-gap); gap: 0.4rem; }
+.status-badge.s-draft { border-style: dashed; }
+.file-field { margin-bottom: var(--field-gap); }
+.page-head > .row { align-items: center; }
+.card > .label:first-child { display: block; margin-bottom: 0.6rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.card > .row { gap: 0.6rem; align-items: center; }
+.invoice-meta > .row { margin-top: 0.9rem; }

@@ -242,8 +242,15 @@ def test_fixed_fee_scope(logged_in, setup):
     assert c.get(f"{API}/scopes/{fx['id']}").json()["invoiced_at"] is not None
     # Billed once only.
     assert draft(c, s["acme"], start="2026-09-01", end="2026-12-31")["lines"] == []
-    r = c.patch(f"{API}/scopes/{fx['id']}", json={"fee": "5000"})
+    # The fee can't drop below what's been billed; it can grow (a change order).
+    r = c.patch(f"{API}/scopes/{fx['id']}", json={"fee": "3000"})
     assert r.status_code == 409
+    grown = c.patch(f"{API}/scopes/{fx['id']}", json={"fee": "5000"}).json()
+    assert grown["invoiced_at"] is None and grown["billing"]["to_invoice"] == "1000.00"
+    balance = draft(c, s["acme"], start="2026-09-01", end="2026-12-31")["lines"]
+    assert [(ln["description"], ln["amount"]) for ln in balance] == [
+        ("Prototype (fixed fee, balance)", "1000.00")
+    ]
 
 
 def test_retainer(logged_in, setup):

@@ -488,6 +488,43 @@ def build_server(api: TahgulAPI) -> MCPServer:
             return r
         return {"count": len(r), "clients": r}
 
+    @mcp.tool(annotations=READ)
+    def fixed_fees(open_only: bool = True) -> dict:
+        """Fixed-price work and where its money stands: how much is invoiced, paid, still
+        waiting (and overdue), and not invoiced yet. Answers "has Eckerts paid me?". Needs a
+        token with the invoice scope."""
+        r = api.call("GET", "/fixed-fees", params={"open": open_only})
+        if isinstance(r, dict):
+            return r
+        return {
+            "count": len(r),
+            "fees": [
+                {
+                    "work": f["title"],
+                    "project": f["project_name"],
+                    "client": f["client_name"],
+                    "currency": f["currency"],
+                    **{
+                        k: f["billing"][k]
+                        for k in (
+                            "fee",
+                            "invoiced",
+                            "paid",
+                            "outstanding",
+                            "overdue",
+                            "in_draft",
+                            "to_invoice",
+                        )
+                    },
+                    "invoices": [
+                        {k: i[k] for k in ("number", "status", "issue_date", "due_date", "amount")}
+                        for i in f["billing"]["invoices"]
+                    ],
+                }
+                for f in r
+            ],
+        }
+
     @mcp.tool(annotations=WRITE)
     def draft_invoice(
         client: str,

@@ -4,6 +4,7 @@ import uuid
 from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -26,7 +27,8 @@ from tahgul.crud import (
 )
 from tahgul.db import get_db
 from tahgul.deps import require_scope
-from tahgul.models import Project, Scope, Task, TimeEntry
+from tahgul.invoicing import FEE_KINDS, fee_billed
+from tahgul.models import Invoice, InvoiceLine, Project, Scope, Task, TimeEntry, Workspace
 from tahgul.principal import Principal
 from tahgul.timeutil import utcnow
 
@@ -89,6 +91,32 @@ class Burn(BaseModel):
     )
 
 
+class FeeInvoice(BaseModel):
+    id: uuid.UUID
+    number: str | None
+    status: str
+    external: bool
+    issue_date: date
+    due_date: date
+    paid_on: date | None
+    overdue: bool
+    amount: TwoPlaces = Field(description="Of this fee")
+    total: TwoPlaces = Field(description="The whole invoice")
+
+
+class FeeBilling(BaseModel):
+    """Where a fixed fee stands: invoiced, paid, waiting, still to bill."""
+
+    fee: TwoPlaces
+    invoiced: TwoPlaces = Field(description="On sent or paid invoices")
+    paid: TwoPlaces
+    outstanding: TwoPlaces = Field(description="Invoiced, not paid yet")
+    overdue: TwoPlaces
+    in_draft: TwoPlaces = Field(description="On draft invoices")
+    to_invoice: TwoPlaces = Field(description="Not on any invoice yet")
+    invoices: list[FeeInvoice]
+
+
 class ScopeOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
@@ -106,6 +134,7 @@ class ScopeOut(BaseModel):
     end_date: date | None
     invoiced_at: datetime | None
     burn: Burn | None = None
+    billing: FeeBilling | None = Field(None, description="Fixed-fee scopes only")
     created_at: datetime
 
 
@@ -150,12 +179,75 @@ def _burn(s: Scope, secs: int, amount: Decimal) -> Burn:
     return Burn(hours=hours, amount=amount, hours_pct=hp, amount_pct=ap, warning=warning)
 
 
+def fee_billing(db: Session, scopes: list[Scope]) -> dict[uuid.UUID, FeeBilling]:
+    fixed = [s for s in scopes if s.type == "fixed"]
+    if not fixed:
+        return {}
+    rows = db.execute(
+        select(InvoiceLine.scope_id, InvoiceLine.amount, Invoice)
+        .join(Invoice, InvoiceLine.invoice_id == Invoice.id)
+        .where(
+            InvoiceLine.scope_id.in_([s.id for s in fixed]),
+            InvoiceLine.kind.in_(FEE_KINDS),
+            Invoice.deleted_at.is_(None),
+            Invoice.status != "void",
+        )
+        .order_by(Invoice.issue_date, Invoice.created_at)
+    ).all()
+    zones: dict[uuid.UUID, date] = {}
+    by_scope: dict[uuid.UUID, dict[uuid.UUID, FeeInvoice]] = {s.id: {} for s in fixed}
+    for sid, amount, inv in rows:
+        if inv.workspace_id not in zones:
+            ws = db.get(Workspace, inv.workspace_id)
+            zones[inv.workspace_id] = utcnow().astimezone(ZoneInfo(ws.timezone)).date()
+        today = zones[inv.workspace_id]
+        fi = by_scope[sid].get(inv.id)
+        if fi is None:
+            fi = by_scope[sid][inv.id] = FeeInvoice(
+                id=inv.id,
+                number=inv.external_number if inv.external else inv.number,
+                status=inv.status,
+                external=inv.external,
+                issue_date=inv.issue_date,
+                due_date=inv.due_date,
+                paid_on=inv.paid_on,
+                overdue=inv.status == "sent" and inv.due_date < today,
+                amount=ZERO,
+                total=inv.total,
+            )
+        fi.amount += amount
+    out = {}
+    for s in fixed:
+        invs = list(by_scope[s.id].values())
+
+        def total(pred, invs=invs) -> Decimal:
+            return sum((i.amount for i in invs if pred(i)), ZERO)
+
+        invoiced = total(lambda i: i.status in ("sent", "paid"))
+        drafted = total(lambda i: i.status == "draft")
+        paid = total(lambda i: i.status == "paid")
+        fee = s.fee or ZERO
+        out[s.id] = FeeBilling(
+            fee=fee,
+            invoiced=invoiced,
+            paid=paid,
+            outstanding=invoiced - paid,
+            overdue=total(lambda i: i.overdue),
+            in_draft=drafted,
+            to_invoice=max(fee - invoiced - drafted, ZERO),
+            invoices=invs,
+        )
+    return out
+
+
 def scope_outs(db: Session, scopes: list[Scope]) -> list[ScopeOut]:
     usage = _usage(db, [s.id for s in scopes])
+    billing = fee_billing(db, scopes)
     out = []
     for s in scopes:
         o = ScopeOut.model_validate(s)
         o.burn = _burn(s, *usage.get(s.id, (0, ZERO)))
+        o.billing = billing.get(s.id)
         out.append(o)
     return out
 
@@ -247,9 +339,15 @@ def update_scope(
     new_type = data.get("type", s.type)
     if new_type in ("fixed", "retainer") and data.get("fee", s.fee) is None:
         raise HTTPException(422, detail="scope_needs_fee")
-    if s.invoiced_at and ({"fee", "type"} & data.keys()):
-        raise HTTPException(409, detail="scope_invoiced")
+    if s.type == "fixed" and ({"fee", "type"} & data.keys()):
+        billed = fee_billed(db, s.id)
+        if billed and (new_type != "fixed" or data.get("fee", s.fee) < billed):
+            # Already (partly) on invoices: the fee can grow, not shrink below what's billed.
+            raise HTTPException(409, detail="scope_invoiced")
     changes = apply_changes(s, data)
+    if s.type == "fixed" and "fee" in changes:
+        full = fee_billed(db, s.id, statuses=("sent", "paid")) >= (s.fee or ZERO)
+        s.invoiced_at = (s.invoiced_at or utcnow()) if full else None
     if changes:
         audit.record(db, principal, "update", "scope", s.id, changes)
         db.commit()
@@ -265,7 +363,7 @@ def delete_scope(
     """Delete a scope; its time and tasks stay on the project, outside any scope."""
     require_admin(principal, "deleting")
     s = get_live(db, Scope, scope_id, "scope")
-    if s.invoiced_at:
+    if s.invoiced_at or (s.type == "fixed" and fee_billed(db, s.id)):
         raise HTTPException(409, detail="scope_invoiced")
     for e in db.scalars(select(TimeEntry).where(TimeEntry.scope_id == s.id)).all():
         if e.invoice_id is None:

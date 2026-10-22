@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { api, type Project, type Task } from "../api";
+import { api, type Project, type Scope, type Task } from "../api";
 import { Board } from "../tasks/Board";
 import { TaskDrawer } from "../tasks/TaskDrawer";
 import { QuickAdd, TaskCalendar, TaskTable } from "../tasks/views";
-import { ScopesPanel } from "../scopes";
+import { ScopesPanel, useScopes } from "../scopes";
+import { ContractPanel } from "../fixedFees";
 import { AddVoiceNote, VoiceNotes } from "../voice";
 import { Dialog, money } from "../ui";
 import { useWorkspace } from "../workspace";
@@ -32,6 +33,7 @@ export default function ProjectPage() {
     enabled: view === "list" || view === "calendar",
   });
   const [editing, setEditing] = useState(false);
+  const scopes = useScopes(id);
   const p = project.data;
   if (project.isError) return <section className="page"><p>Project not found. <Link to="/projects">All projects</Link></p></section>;
   if (!p) return <section className="page"><p className="muted">Loading…</p></section>;
@@ -44,6 +46,8 @@ export default function ProjectPage() {
           <h1><span className="dot inline-dot big" style={{ background: p.colour }} />{p.name}</h1>
         </div>
         <div className="row">
+          <FixedSummary scopes={scopes.data?.scopes ?? []} currency={ws.currency}
+            onOpen={() => setParam("view", "scopes")} />
           <span className="muted small">{money(p.effective_rate, ws.currency, true)} · {p.status}</span>
           <button className="ghost" onClick={() => setEditing(true)}>Edit project</button>
         </div>
@@ -64,7 +68,12 @@ export default function ProjectPage() {
       {view === "list" && tasks.data && (
         <TaskTable tasks={tasks.data} onOpen={(t) => setParam("task", t)} showProject={false} />
       )}
-      {view === "scopes" && <ScopesPanel projectId={id} />}
+      {view === "scopes" && (
+        <>
+          <ContractPanel projectId={id} hasClient={!!p.client_id} />
+          <ScopesPanel projectId={id} />
+        </>
+      )}
       {view === "notes" && (
         <div className="notes-panel">
           <AddVoiceNote target={{ project_id: id }} />
@@ -78,5 +87,26 @@ export default function ProjectPage() {
         {editing && <ProjectForm project={p} onDone={() => setEditing(false)} />}
       </Dialog>
     </section>
+  );
+}
+
+/** "Fixed price $6,000 · $6,000 awaiting payment": the contract at a glance. */
+function FixedSummary({ scopes, currency, onOpen }: { scopes: Scope[]; currency: string; onOpen: () => void }) {
+  const fixed = scopes.filter((s) => s.type === "fixed" && s.billing);
+  if (!fixed.length) return null;
+  const sum = (k: keyof NonNullable<Scope["billing"]>) =>
+    fixed.reduce((t, s) => t + Number(s.billing![k] ?? 0), 0).toFixed(2);
+  const [fee, waiting, overdue, left] = [sum("fee"), sum("outstanding"), sum("overdue"), sum("to_invoice")];
+  const state = Number(overdue) > 0
+    ? <span className="danger-text">{money(overdue, currency)} overdue</span>
+    : Number(waiting) > 0
+      ? <>{money(waiting, currency)} awaiting payment</>
+      : Number(left) > 0
+        ? <>{money(left, currency)} to invoice</>
+        : <span className="ok">paid</span>;
+  return (
+    <button className="fixed-chip" onClick={onOpen} title="Fixed-price billing">
+      Fixed price {money(fee, currency)} · {state}
+    </button>
   );
 }

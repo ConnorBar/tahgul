@@ -12,9 +12,9 @@ from pathlib import Path
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
@@ -24,6 +24,7 @@ from tahgul import invoicing as inv_svc
 from tahgul import timekeeping as tk
 from tahgul.config import get_settings
 from tahgul.crud import (
+    MoneyIn,
     PercentIn,
     PercentOut,
     TwoPlaces,
@@ -35,8 +36,9 @@ from tahgul.crud import (
 )
 from tahgul.db import get_db
 from tahgul.deps import require_scope
-from tahgul.models import Client, Invoice, InvoiceLine, Project, TimeEntry, Workspace
+from tahgul.models import Client, Invoice, InvoiceLine, Project, Scope, TimeEntry, Workspace
 from tahgul.principal import Principal
+from tahgul.routes.scopes import FeeBilling, fee_billing
 from tahgul.timeutil import as_utc, utcnow
 
 router = APIRouter(prefix="/api/v1", tags=["invoicing"])
@@ -80,6 +82,8 @@ class InvoiceSummary(BaseModel):
     total: TwoPlaces
     paid_on: date | None
     overdue: bool = False
+    external: bool = Field(False, description="Recorded here, sent from elsewhere")
+    has_pdf: bool = False
     created_at: datetime
 
 
@@ -154,6 +158,9 @@ class UnbilledClient(BaseModel):
     entries: int
     first_date: date
     last_date: date
+    fees: TwoPlaces = Field(
+        Decimal(0), description="Fixed fees of done scopes not yet invoiced (in amount)"
+    )
 
 
 class Totals(BaseModel):
@@ -201,7 +208,17 @@ def _summary(inv: Invoice) -> InvoiceSummary:
     o = InvoiceSummary.model_validate(inv)
     o.client_name = inv.client.name
     o.overdue = _overdue(inv)
+    o.number = _number(inv)
+    o.has_pdf = _has_pdf(inv)
     return o
+
+
+def _number(inv: Invoice) -> str | None:
+    return inv.external_number if inv.external else inv.number
+
+
+def _has_pdf(inv: Invoice) -> bool:
+    return not inv.external or bool(inv.pdf_path)
 
 
 def _out(db: Session, inv: Invoice, warnings: list[str] | None = None) -> InvoiceOut:
@@ -223,6 +240,8 @@ def _out(db: Session, inv: Invoice, warnings: list[str] | None = None) -> Invoic
             "bill_to": inv.bill_to or inv_svc.bill_to(inv.client),
             "client_name": inv.client.name,
             "overdue": _overdue(inv),
+            "number": _number(inv),
+            "has_pdf": _has_pdf(inv),
         }
     )
     o.lines = []
@@ -318,6 +337,7 @@ def unbilled(
         .options(
             selectinload(TimeEntry.project).selectinload(Project.client),
             selectinload(TimeEntry.project).selectinload(Project.workspace),
+            selectinload(TimeEntry.scope),
         )
         .join(Project, TimeEntry.project_id == Project.id)
         .where(
@@ -331,28 +351,61 @@ def unbilled(
     if workspace_id:
         q = q.where(TimeEntry.workspace_id == workspace_id)
     acc: dict[uuid.UUID, dict] = {}
-    for e in db.scalars(q):
-        c = e.project.client
-        if c is None or c.deleted_at is not None:
-            continue
-        zone = ZoneInfo(e.project.workspace.timezone)
-        d = tk.local_date(e.start_at, zone)
-        a = acc.setdefault(
+
+    def row(c: Client, ws: Workspace, d: date) -> dict:
+        return acc.setdefault(
             c.id,
             {
                 "client": c,
                 "secs": 0,
                 "amount": Decimal(0),
+                "fees": Decimal(0),
                 "n": 0,
                 "first": d,
                 "last": d,
-                "ws": e.project.workspace,
+                "ws": ws,
             },
         )
+
+    for e in db.scalars(q):
+        c = e.project.client
+        if c is None or c.deleted_at is not None:
+            continue
+        if e.scope is not None and e.scope.deleted_at is None and e.scope.type == "fixed":
+            continue  # covered by the fee, which is counted below once the scope is done
+        zone = ZoneInfo(e.project.workspace.timezone)
+        d = tk.local_date(e.start_at, zone)
+        a = row(c, e.project.workspace, d)
         a["secs"] += e.duration_seconds or 0
         a["amount"] += e.amount or 0
         a["n"] += 1
         a["first"], a["last"] = min(a["first"], d), max(a["last"], d)
+    fq = (
+        select(Scope)
+        .options(
+            selectinload(Scope.project).selectinload(Project.client),
+            selectinload(Scope.project).selectinload(Project.workspace),
+        )
+        .join(Project, Scope.project_id == Project.id)
+        .where(
+            Scope.type == "fixed",
+            Scope.status == "done",
+            Scope.deleted_at.is_(None),
+            Scope.invoiced_at.is_(None),
+            Project.client_id.is_not(None),
+        )
+    )
+    if workspace_id:
+        fq = fq.where(Project.workspace_id == workspace_id)
+    for sc in db.scalars(fq):
+        c = sc.project.client
+        rest = (sc.fee or 0) - inv_svc.fee_billed(db, sc.id)
+        if c is None or c.deleted_at is not None or rest <= 0:
+            continue
+        ws = sc.project.workspace
+        a = row(c, ws, sc.end_date or _today(ws))
+        a["amount"] += rest
+        a["fees"] += rest
     return sorted(
         (
             UnbilledClient(
@@ -365,6 +418,7 @@ def unbilled(
                 entries=a["n"],
                 first_date=a["first"],
                 last_date=a["last"],
+                fees=a["fees"],
             )
             for c_id, a in acc.items()
         ),
@@ -435,9 +489,14 @@ def invoice_pdf(
 ):
     """The PDF: the stored copy for issued invoices, a fresh preview for drafts."""
     inv = _load(db, invoice_id)
-    name = f"invoice-{inv.number or 'draft'}.pdf".replace("/", "-")
+    name = f"invoice-{_number(inv) or 'draft'}.pdf".replace("/", "-").replace('"', "")
     disp = "attachment" if download else "inline"
     headers = {"Content-Disposition": f'{disp}; filename="{name}"'}
+    if inv.external:  # the copy you sent, if you attached it
+        path = get_settings().data_dir / inv.pdf_path if inv.pdf_path else None
+        if path is None or not path.exists():
+            raise HTTPException(404, detail="no_pdf")
+        return FileResponse(Path(path), media_type="application/pdf", headers=headers)
     if inv.status == "draft":
         return Response(inv_svc.render_pdf(inv), media_type="application/pdf", headers=headers)
     path = get_settings().data_dir / inv.pdf_path if inv.pdf_path else None
@@ -630,10 +689,14 @@ def delete_invoice(
     principal: Principal = Depends(require_scope("invoice")),
     db: Session = Depends(get_db),
 ):
-    """Delete a draft and free its time. Issued invoices are voided instead, never deleted."""
-    inv = _draft(db, invoice_id)
+    """Delete a draft and free its time. Issued invoices are voided instead, never deleted,
+    except ones recorded from elsewhere (they never took a Tahgul number)."""
+    inv = _load(db, invoice_id)
+    if inv.status != "draft" and not inv.external:
+        raise HTTPException(409, detail="invoice_issued")
     inv_svc.release(db, inv)
     inv.deleted_at = utcnow()
+    inv_svc.sync_fee_scopes(db, inv)
     audit.record(db, principal, "delete", "invoice", inv.id, {"client": inv.client.name})
     db.commit()
 
@@ -713,9 +776,371 @@ def void_invoice(
         return _out(db, inv)
     inv_svc.release(db, inv)
     inv.status, inv.voided_at = "void", utcnow()
-    _write_pdf(inv)
-    audit.record(db, principal, "void", "invoice", inv.id, {"number": inv.number})
+    inv_svc.sync_fee_scopes(db, inv)
+    if not inv.external:
+        _write_pdf(inv)
+    audit.record(db, principal, "void", "invoice", inv.id, {"number": _number(inv)})
     db.commit()
+    return _out(db, _load(db, inv.id))
+
+
+# --- Fixed fees, and invoices sent from elsewhere ----------------------------------------
+
+PDF_MAX = 20 * 1024 * 1024
+
+
+class FeeInvoiceIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    amount: MoneyIn | None = Field(None, description="Default: all of the fee not yet invoiced")
+    description: str | None = Field(None, min_length=1, max_length=500)
+    issue_date: date | None = Field(None, description="Default: today")
+    notes: str | None = Field(None, max_length=4000)
+
+
+class ExternalInvoiceIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    scope_id: uuid.UUID | None = Field(None, description="The fixed-fee scope it bills")
+    client_id: uuid.UUID | None = Field(None, description="Needed when there is no scope_id")
+    number: str = Field(min_length=1, max_length=60, description="Its number, as sent")
+    issue_date: date
+    due_date: date | None = Field(None, description="Default: the client's payment terms")
+    amount: MoneyIn = Field(description="What it billed")
+    description: str | None = Field(None, min_length=1, max_length=500)
+    status: Literal["sent", "paid"] = "sent"
+    paid_on: date | None = Field(None, description="With status paid; default: today")
+    notes: str | None = Field(None, max_length=4000)
+
+    @model_validator(mode="after")
+    def who(self):
+        if self.scope_id is None and self.client_id is None:
+            raise ValueError("give scope_id or client_id")
+        return self
+
+
+class ExternalPatch(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+    number: str | None = Field(None, min_length=1, max_length=60)
+    issue_date: date | None = None
+    due_date: date | None = None
+    amount: MoneyIn | None = None
+    description: str | None = Field(None, min_length=1, max_length=500)
+    notes: str | None = Field(None, max_length=4000)
+
+
+def _fee_scope(db: Session, scope_id: uuid.UUID) -> tuple[Scope, Client]:
+    s = get_live(db, Scope, scope_id, "scope")
+    if s.type != "fixed":
+        raise HTTPException(409, detail="scope_not_fixed_fee")
+    client = s.project.client
+    if client is None or client.deleted_at is not None:
+        raise HTTPException(422, detail="project_has_no_client")
+    return s, client
+
+
+def _fee_left(db: Session, s: Scope, exclude: uuid.UUID | None = None) -> Decimal:
+    return inv_svc.q2((s.fee or 0) - inv_svc.fee_billed(db, s.id, exclude=exclude))
+
+
+def _check_part(amount: Decimal, left: Decimal) -> None:
+    if amount <= 0:
+        raise HTTPException(422, detail="amount_must_be_positive")
+    if amount > left:
+        raise HTTPException(422, detail="amount_over_fee")
+
+
+def _fee_line(s: Scope, amount: Decimal, description: str | None, currency: str) -> InvoiceLine:
+    fee = inv_svc.q2(s.fee or 0)
+    if description is None:
+        if amount == fee:
+            description = f"{s.title} (fixed fee)"
+        else:
+            pct = (amount / fee * 100) if fee else Decimal(0)
+            description = f"{s.title}: {pct:.0f}% of fixed fee {inv_svc._money(fee, currency)}"
+    return InvoiceLine(
+        kind="fee",
+        position=0,
+        description=description[:500],
+        quantity=Decimal(1),
+        unit="item",
+        unit_price=amount,
+        amount=amount,
+        project_id=s.project_id,
+        scope_id=s.id,
+    )
+
+
+class FixedFeeOut(BaseModel):
+    scope_id: uuid.UUID
+    title: str
+    status: str
+    project_id: uuid.UUID
+    project_name: str
+    client_id: uuid.UUID | None
+    client_name: str | None
+    currency: str
+    billing: FeeBilling
+
+
+@router.get("/fixed-fees", response_model=list[FixedFeeOut])
+def fixed_fees(
+    workspace_id: uuid.UUID | None = None,
+    open: bool = Query(False, description="Only fees not fully invoiced or not fully paid"),
+    _: Principal = Depends(require_scope("invoice")),
+    db: Session = Depends(get_db),
+):
+    """Every fixed-price piece of work and where its money stands: invoiced, paid, waiting."""
+    q = (
+        select(Scope)
+        .options(
+            selectinload(Scope.project).selectinload(Project.client),
+            selectinload(Scope.project).selectinload(Project.workspace),
+        )
+        .join(Project, Scope.project_id == Project.id)
+        .where(Scope.type == "fixed", Scope.deleted_at.is_(None), Project.deleted_at.is_(None))
+        .order_by(Scope.created_at)
+    )
+    if workspace_id:
+        q = q.where(Project.workspace_id == workspace_id)
+    scopes = list(db.scalars(q))
+    billing = fee_billing(db, scopes)
+    out = []
+    for sc in scopes:
+        b = billing[sc.id]
+        if open and b.to_invoice <= 0 and b.in_draft <= 0 and b.outstanding <= 0:
+            continue
+        p = sc.project
+        out.append(
+            FixedFeeOut(
+                scope_id=sc.id,
+                title=sc.title,
+                status=sc.status,
+                project_id=p.id,
+                project_name=p.name,
+                client_id=p.client_id,
+                client_name=p.client.name if p.client else None,
+                currency=p.workspace.currency,
+                billing=b,
+            )
+        )
+    return out
+
+
+@router.post("/scopes/{scope_id}/invoice", response_model=InvoiceOut, status_code=201)
+def invoice_fee(
+    scope_id: uuid.UUID,
+    body: FeeInvoiceIn,
+    principal: Principal = Depends(require_scope("invoice")),
+    db: Session = Depends(get_db),
+):
+    """Draft an invoice for a fixed fee, or part of it (a deposit, a milestone), any time.
+
+    The draft holds only the fee; change its dates to pull in other unbilled work too.
+    """
+    s, client = _fee_scope(db, scope_id)
+    left = _fee_left(db, s)
+    amount = inv_svc.q2(body.amount if body.amount is not None else left)
+    _check_part(amount, left)
+    ws = client.workspace
+    issue = body.issue_date or _today(ws)
+    inv = Invoice(
+        workspace_id=ws.id,
+        client_id=client.id,
+        status="draft",
+        issue_date=issue,
+        due_date=issue + timedelta(days=inv_svc.terms_for(client)),
+        period_start=issue,
+        period_end=issue,
+        group_by="project",
+        currency=ws.currency,
+        tax_rate=inv_svc.tax_rate_for(client),
+        notes=body.notes,
+    )
+    db.add(inv)
+    db.flush()
+    db.refresh(inv)
+    inv.lines.append(_fee_line(s, amount, body.description, ws.currency))
+    inv_svc.recalc(inv)
+    audit.record(db, principal, "create", "invoice", inv.id, {"scope": s.title, "fee": str(amount)})
+    db.commit()
+    return _out(db, _load(db, inv.id))
+
+
+@router.post("/invoices/external", response_model=InvoiceOut, status_code=201)
+def record_external(
+    body: ExternalInvoiceIn,
+    principal: Principal = Depends(require_scope("invoice")),
+    db: Session = Depends(get_db),
+):
+    """Record an invoice you sent from somewhere else, so Tahgul can track its payment.
+
+    It keeps its own number (Tahgul's numbering is untouched) and counts towards
+    outstanding and paid totals. Attach the PDF you sent with ``POST …/file``.
+    """
+    scope = None
+    if body.scope_id:
+        scope, client = _fee_scope(db, body.scope_id)
+        _check_part(body.amount, _fee_left(db, scope))
+    else:
+        client = get_live(db, Client, body.client_id, "client")
+        if body.amount <= 0:
+            raise HTTPException(422, detail="amount_must_be_positive")
+    ws = client.workspace
+    due = body.due_date or body.issue_date + timedelta(days=inv_svc.terms_for(client))
+    if due < body.issue_date:
+        raise HTTPException(422, detail="due_before_issue")
+    paid = body.status == "paid"
+    inv = Invoice(
+        workspace_id=ws.id,
+        client_id=client.id,
+        external=True,
+        external_number=body.number,
+        status=body.status,
+        issue_date=body.issue_date,
+        due_date=due,
+        period_start=body.issue_date,
+        period_end=body.issue_date,
+        group_by="project",
+        currency=ws.currency,
+        notes=body.notes,
+        bill_from=inv_svc.bill_from(ws),
+        bill_to=inv_svc.bill_to(client),
+        sent_at=utcnow(),
+        paid_on=(body.paid_on or _today(ws)) if paid else None,
+    )
+    db.add(inv)
+    db.flush()
+    db.refresh(inv)
+    amount = inv_svc.q2(body.amount)
+    if scope is not None:
+        inv.lines.append(_fee_line(scope, amount, body.description, ws.currency))
+    else:
+        inv.lines.append(
+            InvoiceLine(
+                kind="manual",
+                position=0,
+                description=(body.description or f"Invoice {body.number}")[:500],
+                quantity=Decimal(1),
+                unit="item",
+                unit_price=amount,
+                amount=amount,
+            )
+        )
+    inv_svc.recalc(inv)
+    inv_svc.sync_fee_scopes(db, inv)
+    audit.record(
+        db,
+        principal,
+        "record",
+        "invoice",
+        inv.id,
+        {"number": body.number, "total": str(amount), "status": body.status},
+    )
+    db.commit()
+    return _out(db, _load(db, inv.id))
+
+
+def _external(db: Session, invoice_id: uuid.UUID) -> Invoice:
+    inv = _load(db, invoice_id)
+    if not inv.external:
+        raise HTTPException(409, detail="invoice_not_external")
+    return inv
+
+
+@router.patch("/invoices/{invoice_id}/external", response_model=InvoiceOut)
+def update_external(
+    invoice_id: uuid.UUID,
+    body: ExternalPatch,
+    principal: Principal = Depends(require_scope("invoice")),
+    db: Session = Depends(get_db),
+):
+    """Fix a recorded invoice's number, dates or amount."""
+    inv = _external(db, invoice_id)
+    if inv.status == "void":
+        raise HTTPException(409, detail="invoice_void")
+    data = patch_data(body, {"notes"})
+    line = inv.lines[0] if inv.lines else None
+    changes: dict = {}
+    if "number" in data:
+        changes |= apply_changes(inv, {"external_number": data.pop("number")})
+    amount = data.pop("amount", None)
+    description = data.pop("description", None)
+    changes |= apply_changes(inv, data)
+    if inv.due_date < inv.issue_date:
+        raise HTTPException(422, detail="due_before_issue")
+    inv.period_start = inv.period_end = inv.issue_date
+    if line is not None and (amount is not None or description is not None):
+        if amount is not None:
+            amount = inv_svc.q2(amount)
+            if line.kind == "fee" and line.scope_id:
+                _check_part(amount, _fee_left(db, db.get(Scope, line.scope_id), exclude=inv.id))
+            elif amount <= 0:
+                raise HTTPException(422, detail="amount_must_be_positive")
+        changes |= apply_changes(
+            line,
+            {
+                k: v
+                for k, v in (
+                    ("unit_price", amount),
+                    ("amount", amount),
+                    ("description", description),
+                )
+                if v is not None
+            },
+        )
+        inv_svc.recalc(inv)
+        inv_svc.sync_fee_scopes(db, inv)
+    if changes:
+        audit.record(db, principal, "update", "invoice", inv.id, changes)
+    db.commit()
+    return _out(db, _load(db, inv.id))
+
+
+def _limit_pdf(request: Request) -> None:
+    length = request.headers.get("content-length")
+    if length and length.isdigit() and int(length) > PDF_MAX + 64 * 1024:
+        raise HTTPException(413, detail="pdf_too_large")
+
+
+@router.post(
+    "/invoices/{invoice_id}/file", response_model=InvoiceOut, dependencies=[Depends(_limit_pdf)]
+)
+def attach_pdf(
+    invoice_id: uuid.UUID,
+    file: UploadFile = File(description="The PDF you sent, up to 20 MB"),
+    principal: Principal = Depends(require_scope("invoice")),
+    db: Session = Depends(get_db),
+):
+    """Keep a copy of the PDF you sent with a recorded invoice."""
+    inv = _external(db, invoice_id)
+    data = file.file.read(PDF_MAX + 1)
+    if len(data) > PDF_MAX:
+        raise HTTPException(413, detail="pdf_too_large")
+    if not data.startswith(b"%PDF"):
+        raise HTTPException(415, detail="not_a_pdf")
+    root = get_settings().data_dir
+    path = root / "invoices" / "external" / f"{inv.id}.pdf"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_bytes(data)
+    tmp.replace(path)
+    inv.pdf_path = str(path.relative_to(root))
+    audit.record(db, principal, "attach_pdf", "invoice", inv.id, {"bytes": len(data)})
+    db.commit()
+    return _out(db, _load(db, inv.id))
+
+
+@router.delete("/invoices/{invoice_id}/file", response_model=InvoiceOut)
+def remove_pdf(
+    invoice_id: uuid.UUID,
+    principal: Principal = Depends(require_scope("invoice")),
+    db: Session = Depends(get_db),
+):
+    inv = _external(db, invoice_id)
+    if inv.pdf_path:
+        (get_settings().data_dir / inv.pdf_path).unlink(missing_ok=True)
+        inv.pdf_path = None
+        audit.record(db, principal, "remove_pdf", "invoice", inv.id, {})
+        db.commit()
     return _out(db, _load(db, inv.id))
 
 
@@ -840,7 +1265,7 @@ def export_invoices(
         )
     rows = [
         [
-            i.number,
+            _number(i),
             i.issue_date,
             i.due_date,
             i.client.name,
@@ -852,6 +1277,7 @@ def export_invoices(
             i.total,
             i.status,
             i.paid_on or "",
+            "yes" if i.external else "",
         ]
         for i in db.scalars(q.order_by(Invoice.issue_date, Invoice.number))
     ]
@@ -870,6 +1296,7 @@ def export_invoices(
             "total",
             "status",
             "paid_on",
+            "recorded_from_elsewhere",
         ],
         f"invoices-{year or 'all'}.csv",
     )

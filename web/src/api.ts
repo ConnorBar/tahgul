@@ -473,6 +473,7 @@ export type Scope = {
   start_date: string | null;
   end_date: string | null;
   invoiced_at: string | null;
+  billing: FeeBilling | null;
   burn: {
     hours: string;
     amount: string;
@@ -480,6 +481,43 @@ export type Scope = {
     amount_pct: string | null;
     warning: "ok" | "near" | "over" | null;
   } | null;
+};
+
+export type FeeInvoice = {
+  id: string;
+  number: string | null;
+  status: InvoiceStatus;
+  external: boolean;
+  issue_date: string;
+  due_date: string;
+  paid_on: string | null;
+  overdue: boolean;
+  amount: string;
+  total: string;
+};
+
+/** Where a fixed fee stands. */
+export type FeeBilling = {
+  fee: string;
+  invoiced: string;
+  paid: string;
+  outstanding: string;
+  overdue: string;
+  in_draft: string;
+  to_invoice: string;
+  invoices: FeeInvoice[];
+};
+
+export type FixedFee = {
+  scope_id: string;
+  title: string;
+  status: Scope["status"];
+  project_id: string;
+  project_name: string;
+  client_id: string | null;
+  client_name: string | null;
+  currency: string;
+  billing: FeeBilling;
 };
 
 export type ScopeReport = {
@@ -508,13 +546,15 @@ export type InvoiceSummary = {
   total: string;
   paid_on: string | null;
   overdue: boolean;
+  external: boolean;
+  has_pdf: boolean;
   created_at: string;
 };
 
 export type InvoiceLine = {
   id: string;
   position: number;
-  kind: "time" | "fixed" | "retainer" | "overage" | "manual";
+  kind: "time" | "fixed" | "fee" | "retainer" | "overage" | "manual";
   description: string;
   quantity: string;
   unit: "hours" | "item" | "month";
@@ -551,6 +591,7 @@ export type Unbilled = {
   entries: number;
   first_date: string;
   last_date: string;
+  fees: string;
 };
 
 export type InvoiceTotals = {
