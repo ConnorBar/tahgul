@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Tahgul</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<style>
+  :root { --bg: #f6f5f1; --surface: #fff; --text: #1d1f22; --muted: #6a6e74; --line: #e3e1da; --accent: #2f5d50; --accent-text: #fff; --danger: #b3412c; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #16181b; --surface: #1f2226; --text: #e8e6e1; --muted: #9a9ea4; --line: #33373c; --accent: #6fb39c; --accent-text: #0f1a16; --danger: #e07a62; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100dvh; display: grid; place-items: center; padding: 1.5rem 1rem;
+    background: var(--bg); color: var(--text); font: 16px/1.5 ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif; }
+  main { width: min(420px, 100%); background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 2rem 1.75rem; text-align: center; }
+  img { width: 56px; height: 56px; }
+  h1 { margin: 0.75rem 0 0.25rem; font-size: 1.4rem; }
+  p { margin: 0.5rem 0; color: var(--muted); }
+  .spin { width: 22px; height: 22px; margin: 1rem auto 0; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent); animation: s 0.8s linear infinite; }
+  @keyframes s { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+  .no { color: var(--danger); font-weight: 600; font-size: 1.05rem; margin-top: 1rem; }
+  a.button { display: inline-flex; align-items: center; justify-content: center; min-height: 2.5rem; padding: 0 1.1rem; margin: 0.35rem; border-radius: 8px;
+    font-weight: 550; text-decoration: none; background: var(--accent); color: var(--accent-text); border: 1px solid var(--accent); }
+  a.button.ghost { background: transparent; color: var(--text); border-color: var(--line); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <img src="favicon.svg" alt="">
+  <h1>Tahgul</h1>
+  <div id="checking">
+    <p>Checking for the private network…</p>
+    <div class="spin" aria-hidden="true"></div>
+  </div>
+  <div id="blocked" hidden>
+    <p class="no">No entry</p>
+    <p>Tahgul lives on a private network and isn't on the public internet. Connect this device to Tailscale and try again.</p>
+    <p>
+      <a class="button" href="https://tailscale.com/download">Get Tailscale</a>
+      <a class="button ghost" id="retry" href="">Try again</a>
+    </p>
+  </div>
+</main>
+<script>
+  // Where Tahgul is served on the tailnet (Hive's `tailscale serve`, see docs/hive.md).
+  const TARGET = "https://hive.taile21c6d.ts.net:8443";
+
+  const show = () => {
+    document.getElementById("checking").hidden = true;
+    document.getElementById("blocked").hidden = false;
+    document.getElementById("retry").href = location.href;
+  };
+  // An opaque (no-cors) response is enough: it means this device can reach the tailnet.
+  const ping = () =>
+    fetch(TARGET + "/api/v1/health", { mode: "no-cors", cache: "no-store", signal: AbortSignal.timeout(5000) });
+  ping()
+    .then(() => location.replace(TARGET + location.pathname.replace(/^\/+/, "/") + location.search + location.hash))
+    .catch(show);
+</script>
+</body>
+</html>

@@ -28,7 +28,13 @@ Open <http://localhost:8000> for the login page and <http://localhost:8000/api/d
 docker compose exec api tahgul create-owner --email you@example.com
 ```
 
-On the homelab, add the Tailscale sidecar so the app is served at `https://tahgul.<tailnet>.ts.net` with a valid certificate (set `TS_AUTHKEY` and `TAHGUL_COOKIE_SECURE=true` first):
+**On Hive, next to Yog** (the same pattern as Yog: localhost ports published by the host's `tailscale serve`): one script writes the secrets, starts the stack, creates your login, and serves it at `https://hive.<tailnet>.ts.net:8443`. See [docs/hive.md](docs/hive.md), which also covers the `tahgul.cobars.space` gate page and keeping family out with the tailnet ACL.
+
+```sh
+deploy/hive/setup.sh
+```
+
+**As its own tailnet machine** instead: the Tailscale sidecar serves `https://tahgul.<tailnet>.ts.net` with a valid certificate (set `TS_AUTHKEY` and `TAHGUL_COOKIE_SECURE=true` first):
 
 ```sh
 docker compose --profile tailscale up -d --build
@@ -74,7 +80,7 @@ api/      FastAPI app (tahgul/), Alembic migrations
 web/      React + TypeScript + Vite, built into the API image
 mcp/      tahgul-mcp server (MCP tools over the REST API)
 deploy/   docker-compose.yml, Radicale image, Tailscale serve config, entrypoint, backup/restore
-docs/     SPEC.md, decisions.md, siri-shortcuts.md, agent.md, calendar.md, invoicing.md, voice-notes.md, webhooks.md, client-reports.md, operations.md
+docs/     SPEC.md, decisions.md, hive.md, yog.md, siri-shortcuts.md, agent.md, calendar.md, invoicing.md, voice-notes.md, webhooks.md, client-reports.md, operations.md
 tests/    pytest; tests/smoke: Playwright against a running stack
 ```
 

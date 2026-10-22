@@ -1,5 +1,7 @@
 # Running Tahgul
 
+On Hive next to Yog, start with [hive.md](hive.md) (one script: secrets, stack, login, `tailscale serve`). Everything below applies there too; the addresses are `https://hive.<tailnet>.ts.net:8443` (app) and `:8444` (calendars) instead of `tahgul.<tailnet>.ts.net`.
+
 ## Demo data
 
 On an empty install, fill a few weeks of believable work (clients, projects, scopes, tasks, time, ideas and one issued invoice) to try things out:
@@ -48,7 +50,7 @@ It must be opened over HTTPS (the Tailscale URL) for installing and for in-brows
 
 ### Linking from a landing page
 
-A public page (say, a Vercel site listing your apps) can link to `https://tahgul.<tailnet>.ts.net`. The link only opens on devices signed in to your tailnet, which is the point: Tahgul itself never goes on the public internet. Don't proxy or rewrite Tahgul through the public site, or the login cookie and the no-public-exposure rule both break.
+A public page (say, a Vercel site listing your apps) can link to Tahgul's tailnet address, or to the gate page at `tahgul.cobars.space` ([hive.md](hive.md#tahgulcobarsspace-gate-page)). The gate forwards devices on the tailnet and shows "No entry" to everyone else. Tahgul itself never goes on the public internet. Don't proxy or rewrite Tahgul through the public site, or the login cookie and the no-public-exposure rule both break.
 
 ## Updating
 

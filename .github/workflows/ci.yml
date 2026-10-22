@@ -38,6 +38,7 @@ jobs:
         run: |
           ruff check api tests mcp
           ruff format --check api tests mcp
+          shellcheck deploy/*.sh deploy/hive/*.sh
       - name: Migrations apply cleanly and match the models
         working-directory: api
         run: |

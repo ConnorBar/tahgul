@@ -4,6 +4,10 @@ Answers to the open questions in [SPEC.md](SPEC.md), newest first.
 
 | Date | Question | Decision |
 | --- | --- | --- |
+| 2026-10-22 | Hosting on Hive | Same pattern as Yog: Compose on localhost ports (8790 app, 8791 Radicale), published by the host's `tailscale serve` on :8443 and :8444 (Yog keeps :443). Family's `tag:yog:443` grant can't reach it; ACL tests guard that. A gate page at `tahgul.cobars.space` forwards tailnet devices, like Yog's. The sidecar (own hostname) stays as the alternative. |
+| 2026-10-22 | Yog integration | Not built yet: the two apps stay independent and would only talk through tokens, webhooks and MCP with idempotent ids. Candidate points are listed in `docs/yog.md`. |
+| 2026-10-22 | Fixed-price work | A fixed fee can be invoiced in parts any time (`fee` lines), with the rest added automatically once the scope is done. Invoices sent from elsewhere are recorded with their own number (outside Tahgul's sequence) so their payment is tracked. |
+| 2026-10-22 | Calendar | Day/3-day/week is one continuous 24-hour strip that scrolls sideways (FullCalendar kept for month). Entries and events take an explicit end date, so work past midnight is entered as it happened. |
 | 2026-10-21 | Tasks in Reminders | A dedicated VTODO list per workspace rather than mixing to-dos into calendars. Top-level tasks only; deleting a reminder on the phone never deletes the task. Changes in Tahgul are pushed a few seconds after commit; phone changes are pulled with the calendar sync. |
 | 2026-10-21 | Client report links | The spec keeps Tahgul off the internet, so public report links are served by a **separate app** (`tahgul.public`, report routes only) in its own optional container, published with Tailscale Funnel on port 10000. Without it, links work on the tailnet and the PDF is what gets sent. Creating links needs `admin`. |
 | 2026-10-21 | Webhook delivery | Outbox in the database (written with the change, sent by a background thread, retried with backoff for ~9 hours), HMAC-SHA256 signatures over `timestamp.body`. Any http(s) URL is allowed, since receivers live on the LAN/tailnet; managing webhooks needs `admin`. |
